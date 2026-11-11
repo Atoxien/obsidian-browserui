@@ -145,3 +145,22 @@ test('CORS nur für erlaubte Herkunft, Token-Login', async () => {
   const bad = await app.inject({ url: '/api/files', headers: { authorization: `Bearer ${token}x` } });
   assert.equal(bad.statusCode, 401);
 });
+
+test('Atomares Schreiben hinterlässt keine Temp-Dateien', async () => {
+  for (let i = 0; i < 3; i++) {
+    const r = await app.inject({
+      method: 'PUT',
+      url: '/api/file?path=Ordner/Atomar.md',
+      cookies: cookie,
+      headers: { ...H, 'content-type': 'text/markdown' },
+      payload: `Version ${i}`,
+    });
+    assert.equal(r.statusCode, 200);
+  }
+  const onDisk = await fs.readdir(path.join(dir, 'Ordner'));
+  assert.deepEqual(onDisk.filter((n) => n.includes('obui-tmp') || n.endsWith('.tmp')), []);
+  await fs.writeFile(path.join(dir, 'Ordner', '.Rest.md.1.2.obui-tmp'), 'alt');
+  const list = (await app.inject({ url: '/api/files', cookies: cookie })).json().files.map((f) => f.path);
+  assert.ok(!list.some((p) => p.endsWith('.obui-tmp')));
+  assert.equal(await fs.readFile(path.join(dir, 'Ordner', 'Atomar.md'), 'utf8'), 'Version 2');
+});

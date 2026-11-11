@@ -5,7 +5,7 @@ import Fastify from 'fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import { watch } from 'chokidar';
-import { Vault, VaultError, HIDDEN_DIRS } from './vault.js';
+import { Vault, VaultError, HIDDEN_DIRS, TMP_SUFFIX } from './vault.js';
 import { createAuth } from './auth.js';
 
 const MIME = {
@@ -143,7 +143,7 @@ export async function buildApp(opts) {
         ignoreInitial: true,
         ignored: (p) => {
           const rel = path.relative(vault.realRoot, p);
-          return rel.split(path.sep).some((seg) => HIDDEN_DIRS.has(seg)) || p.endsWith('.tmp');
+          return rel.split(path.sep).some((seg) => HIDDEN_DIRS.has(seg)) || p.endsWith(TMP_SUFFIX);
         },
         awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 50 },
       });

@@ -14,10 +14,18 @@ Vault Browser öffnet deinen [Obsidian](https://obsidian.md)-Vault direkt im Bro
 
 | Weg | Wofür | Voraussetzung |
 | --- | --- | --- |
-| **Eigener Server** | Schnell an einem fremden Laptop an deine Notizen: Seite öffnen, Server-Adresse + Passwort eingeben, fertig | Self-hosted Server (siehe unten), per HTTPS erreichbar |
+| **Eigener Server** | Von jedem Laptop an deine Notizen: Seite öffnen, Server-Adresse + Passwort eingeben, fertig | Self-hosted Server (siehe unten), per HTTPS erreichbar |
+| ↳ **mit Self-hosted LiveSync** | Dein Vault wird per LiveSync (CouchDB) synchronisiert? Dann bindet der Server ihn über die offizielle livesync-bridge an – Änderungen landen auf allen Obsidian-Geräten | [Anleitung: docs/livesync.md](docs/livesync.md) |
 | **Lokaler Ordner** | Vault direkt vom PC öffnen – auch aus **OneDrive, Dropbox, Google Drive, iCloud**, wenn deren Sync-Ordner eingebunden ist. Es wird nichts hochgeladen. | Chrome, Edge oder Brave (Firefox/Safari: nur lesen) |
 | **Obsidian Local REST API** | Mit dem laufenden Obsidian auf diesem PC verbinden | Community-Plugin [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) |
+| **Demo** | Ausprobieren ohne eigenen Vault | nichts |
 | WebDAV / Nextcloud | *geplant* | |
+
+Jeder Besucher arbeitet nur mit **seiner eigenen** Quelle. Die Seite selbst speichert keine Notizen, Zugänge oder Nutzerdaten. Du kannst also mit deinem Server arbeiten, während jemand anderes gleichzeitig die Demo ausprobiert – ohne deinen Vault zu sehen.
+
+### Demo
+
+„Demo ausprobieren“ öffnet einen Beispiel-Vault, der **nur im aktuellen Browser-Tab** existiert. Alles lässt sich bearbeiten, aber nichts wird an einen Server geschickt oder mit anderen geteilt. Die Demo wird **nach 4 Stunden automatisch zurückgesetzt**, beim Schließen des Tabs ist sie weg, und sie lässt sich jederzeit über „Jetzt zurücksetzen“ leeren.
 
 Die Oberfläche gibt es auf zwei Arten – beides ist dieselbe App:
 
@@ -81,7 +89,7 @@ services:
       VAULT_PASSWORD: "dein-passwort"
       SESSION_SECRET: "zufälliger-langer-wert"
       SECURE_COOKIE: "1"                              # hinter HTTPS
-      ALLOWED_ORIGINS: "https://atoxien.github.io"    # Zugriff über die GitHub-Pages-Seite erlauben
+      ALLOWED_ORIGINS: "https://atoxien.github.io"    # Adresse der Oberfläche, die du nutzt (Pages des Projekts oder deines Forks)
     volumes:
       - /pfad/zu/deinem/vault:/vault
 ```
@@ -115,7 +123,7 @@ VAULT_PATH=/pfad/zum/vault VAULT_PASSWORD=geheim npm start
 | `SESSION_SECRET` | zufällig | Signatur der Login-Cookies; setzen, damit Logins Neustarts überleben |
 | `SECURE_COOKIE` | `0` | `1` = Cookie nur über HTTPS (hinter Reverse-Proxy empfohlen) |
 | `PORT` / `HOST` | `8080` / `0.0.0.0` | |
-| `ALLOWED_ORIGINS` | – | Kommagetrennte Herkünfte, deren Oberfläche diesen Server nutzen darf, z.B. `https://atoxien.github.io`. Nötig für den Weg „Eigener Server“ von GitHub Pages aus. |
+| `ALLOWED_ORIGINS` | – | Kommagetrennte Adressen (ohne Pfad) der Oberflächen, die diesen Server nutzen dürfen – z.B. `https://atoxien.github.io` für die offizielle Pages-Seite oder `https://<dein-user>.github.io` für deinen Fork. Nur nötig, wenn die Oberfläche nicht von diesem Server selbst kommt. |
 | `NO_AUTH` | – | `1` = ohne Passwort (nur für lokale Tests!) |
 
 ### Sicherheit
@@ -169,11 +177,12 @@ Aufbau:
 ```
 server/   Fastify-Server: Vault-API, Login, Datei-Watch (SSE)
 web/      Frontend (Vite + TypeScript, ohne Framework)
-  src/adapters/   VaultAdapter: server, localfs, restapi (WebDAV folgt)
+  src/adapters/   VaultAdapter: server, localfs, restapi, demo (WebDAV folgt)
   src/vault/      Index, Link-Auflösung, Backlinks, Suche, Frontmatter
   src/markdown/   markdown-it mit Obsidian-Erweiterungen
   src/ui/         Workspace, Editor, Lese-Ansicht, Dateibaum
-examples/vault/   Beispiel-Vault zum Ausprobieren
+examples/vault/   Beispiel-Vault (auch Inhalt der Demo)
+deploy/livesync/  Compose + Bridge-Konfiguration für Self-hosted LiveSync
 ```
 
 Neue Quellen (z.B. WebDAV) implementieren das Interface in `web/src/adapters/types.ts`.
@@ -182,4 +191,4 @@ GitHub Actions: `ci.yml` (Tests + Build), `pages.yml` (Veröffentlichung auf Git
 
 ## Lizenz
 
-Siehe [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) für die verwendeten Bibliotheken.
+Siehe [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) für die verwendeten Bibliotheken. [livesync-bridge](https://github.com/vrtmrz/livesync-bridge) ist nicht enthalten, sondern wird beim Einrichten aus ihrem eigenen Repo gebaut.

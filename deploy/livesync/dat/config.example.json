@@ -1,0 +1,26 @@
+{
+  "peers": [
+    {
+      "type": "couchdb",
+      "name": "livesync",
+      "group": "vault",
+      "url": "https://couchdb.example.com",
+      "database": "obsidian",
+      "username": "BENUTZER",
+      "password": "PASSWORT",
+      "passphrase": "E2EE-PASSPHRASE-ODER-LEER",
+      "obfuscatePassphrase": "PFAD-VERSCHLEIERUNG-ODER-LEER",
+      "idDerivationKey": "sls-id-v1:WIEDERHERSTELLUNGSCODE-ODER-ZEILE-LOESCHEN",
+      "baseDir": "",
+      "useRemoteTweaks": true
+    },
+    {
+      "type": "storage",
+      "name": "vault-browser",
+      "group": "vault",
+      "baseDir": "data/vault/",
+      "scanOfflineChanges": true,
+      "ignore": ["**/*.obui-tmp", ".trash/**", "**/.git/**"]
+    }
+  ]
+}

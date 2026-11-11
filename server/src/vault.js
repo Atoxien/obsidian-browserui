@@ -3,6 +3,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 export const HIDDEN_DIRS = new Set(['.obsidian', '.trash', '.git', 'node_modules']);
+/** Endung temporärer Dateien beim atomaren Schreiben */
+export const TMP_SUFFIX = '.obui-tmp';
 
 export class VaultError extends Error {
   constructor(status, message) {
@@ -67,7 +69,7 @@ export class Vault {
       }
       for (const ent of entries) {
         if (ent.isDirectory() && HIDDEN_DIRS.has(ent.name)) continue;
-        if (ent.name === '.DS_Store') continue;
+        if (ent.name === '.DS_Store' || ent.name.endsWith(TMP_SUFFIX)) continue;
         const rel = dirRel ? `${dirRel}/${ent.name}` : ent.name;
         const abs = path.join(dirAbs, ent.name);
         if (ent.isDirectory()) {
@@ -118,9 +120,16 @@ export class Vault {
       }
     }
     await fs.mkdir(path.dirname(abs), { recursive: true });
-    const tmp = `${abs}.${process.pid}.${Date.now()}.tmp`;
-    await fs.writeFile(tmp, data);
-    await fs.rename(tmp, abs);
+    // Versteckte, eindeutig benannte Temp-Datei: Sync-Werkzeuge (z.B. livesync-bridge mit
+    // ignore "**/*.obui-tmp") übertragen so nie einen halb geschriebenen Zwischenstand.
+    const tmp = path.join(path.dirname(abs), `.${path.basename(abs)}.${process.pid}.${Date.now()}${TMP_SUFFIX}`);
+    try {
+      await fs.writeFile(tmp, data);
+      await fs.rename(tmp, abs);
+    } catch (e) {
+      await fs.rm(tmp, { force: true }).catch(() => {});
+      throw e;
+    }
     const st = await fs.stat(abs);
     return { mtime: st.mtimeMs, size: st.size };
   }

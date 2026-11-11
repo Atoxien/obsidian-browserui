@@ -6,6 +6,8 @@ COPY web/package.json web/
 COPY server/package.json server/
 RUN npm ci
 COPY web web
+# Beispiel-Vault wird als Demo in die Oberfläche eingebettet
+COPY examples examples
 RUN npm run build -w web
 
 # ---- Laufzeit ----

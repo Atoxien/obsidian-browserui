@@ -10,7 +10,8 @@ services:
       VAULT_PASSWORD: "bitte-ändern"        # Pflicht: Login-Passwort
       SESSION_SECRET: "langer-zufallswert"  # empfohlen: z.B. `openssl rand -hex 32`
       # SECURE_COOKIE: "1"                  # aktivieren, wenn hinter HTTPS-Reverse-Proxy
-      # Zugriff von der GitHub-Pages-Oberfläche erlauben (z.B. für fremde Rechner):
-      # ALLOWED_ORIGINS: "https://atoxien.github.io"
+      # Adresse der Oberfläche erlauben, wenn sie nicht von diesem Server kommt (ohne Pfad),
+      # z.B. die GitHub-Pages-Seite des Projekts oder deines Forks:
+      # ALLOWED_ORIGINS: "https://<user>.github.io"
     volumes:
       - /pfad/zu/deinem/vault:/vault        # Container läuft als UID 1000 (user "node")

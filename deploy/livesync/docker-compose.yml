@@ -1,0 +1,45 @@
+# Vault Browser + Self-hosted LiveSync
+#
+#   Obsidian-Geräte ⇄ CouchDB (LiveSync) ⇄ livesync-bridge ⇄ ./data/vault ⇄ Vault Browser ⇄ Browser
+#
+# Anleitung: docs/livesync.md – vorher unbedingt ein Backup machen!
+#
+#   mkdir -p data/vault && sudo chown -R 1993:1993 data
+#   cp dat/config.example.json dat/config.json   # ausfüllen
+#   docker compose up -d
+
+name: vault-browser-livesync
+
+services:
+  # Spiegelt die LiveSync-Datenbank (inkl. Ende-zu-Ende-Verschlüsselung) in ./data/vault und zurück.
+  # Offizielles Werkzeug des LiveSync-Autors: https://github.com/vrtmrz/livesync-bridge
+  livesync-bridge:
+    build: https://github.com/vrtmrz/livesync-bridge.git#main
+    image: localhost/livesync-bridge:latest
+    restart: unless-stopped
+    volumes:
+      - ./dat:/app/dat                                  # enthält config.json (Zugangsdaten!)
+      - ./data:/app/data                                # Vault als Ordner: data/vault
+      - bridge_local_storage:/deno-dir/location_data    # merkt sich den Sync-Stand
+
+  vault-browser:
+    image: ghcr.io/atoxien/obsidian-browserui:latest
+    restart: unless-stopped
+    user: "1993:1993"            # gleiche UID wie die Bridge, damit beide schreiben dürfen
+    depends_on:
+      - livesync-bridge
+    ports:
+      - "127.0.0.1:8080:8080"   # nur lokal – davor kommt dein HTTPS-Reverse-Proxy
+    environment:
+      VAULT_PATH: /vault
+      VAULT_PASSWORD: "bitte-ändern"
+      SESSION_SECRET: "langer-zufallswert"   # z.B. `openssl rand -hex 32`
+      SECURE_COOKIE: "1"
+      # Adresse der Oberfläche, über die du zugreifst, wenn sie nicht von diesem Server kommt
+      # (z.B. die GitHub-Pages-Seite des Projekts oder deines Forks). Ohne Pfad, ohne "/" am Ende.
+      # ALLOWED_ORIGINS: "https://<user>.github.io"
+    volumes:
+      - ./data/vault:/vault
+
+volumes:
+  bridge_local_storage:

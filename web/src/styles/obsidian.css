@@ -1348,3 +1348,28 @@ iframe.pdf-view {
     padding-top: 6vh;
   }
 }
+
+/* Demo-Hinweis */
+.demo-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 6px 12px;
+  font-size: 13px;
+  background: hsla(var(--accent-h), var(--accent-s), var(--accent-l), 0.18);
+  border-bottom: 1px solid hsla(var(--accent-h), var(--accent-s), var(--accent-l), 0.4);
+  color: var(--text-normal);
+  flex-shrink: 0;
+}
+.demo-banner span {
+  flex: 1;
+  min-width: 200px;
+}
+.demo-banner button {
+  padding: 3px 10px;
+  font-size: 12.5px;
+}
+.source-card.mod-demo {
+  border-style: dashed;
+}

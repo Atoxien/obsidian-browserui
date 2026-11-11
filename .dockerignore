@@ -2,5 +2,6 @@ node_modules
 **/node_modules
 web/dist
 .git
-examples
 *.log
+deploy
+docs

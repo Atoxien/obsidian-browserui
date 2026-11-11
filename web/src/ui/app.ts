@@ -66,6 +66,8 @@ export class App {
   constructor(
     public adapter: VaultAdapter,
     private onExit: () => void,
+    /** Nur Demo: Demo-Vault zurücksetzen und neu starten */
+    private onDemoReset?: () => void,
   ) {
     const ro = adapter.readOnly;
     this.tree = new FileTree({
@@ -179,6 +181,17 @@ export class App {
     const backdrop = h('div.sidebar-backdrop', { onclick: () => this.closeMobileSidebars() });
 
     const status = h('div.status-bar', {}, this.statusLeft, h('div.status-bar-spacer'), this.statusRight);
+    if (this.adapter.kind === 'demo') {
+      this.root.append(
+        h(
+          'div.demo-banner',
+          {},
+          h('span', { text: 'Demo – deine Änderungen bleiben nur in diesem Browser-Tab und werden nach 4 Stunden automatisch zurückgesetzt.' }),
+          h('button', { text: 'Jetzt zurücksetzen', onclick: () => this.onDemoReset?.() }),
+          h('button', { text: 'Eigenen Vault öffnen', onclick: () => void this.exit() }),
+        ),
+      );
+    }
     this.root.append(h('div.workspace', {}, ribbon, left, main, right, backdrop), status);
 
     const isMobile = matchMedia('(max-width: 768px)').matches;
@@ -1181,6 +1194,7 @@ export class App {
     });
     c('settings', 'Einstellungen', () => this.settingsDialog());
     c('exit', 'Vault wechseln / abmelden', () => void this.exit());
+    if (this.adapter.kind === 'demo') c('demo-reset', 'Demo zurücksetzen', () => this.onDemoReset?.());
   }
 
   private onKey = (e: KeyboardEvent) => {
@@ -1333,7 +1347,7 @@ function rotated(el: SVGElement, deg: number) {
 }
 
 function sourceLabel(a: VaultAdapter) {
-  return { server: 'Server', localfs: 'Lokaler Ordner', restapi: 'Obsidian REST API', readonly: 'Lokal (nur lesen)' }[a.kind];
+  return { server: 'Server', localfs: 'Lokaler Ordner', restapi: 'Obsidian REST API', readonly: 'Lokal (nur lesen)', demo: 'Demo' }[a.kind];
 }
 
 function highlightTerms(text: string, terms: string[]) {

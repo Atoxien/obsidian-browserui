@@ -4,6 +4,7 @@ import type { VaultAdapter } from './adapters/types';
 import { ServerAdapter, normalizeServerUrl, probeServer, serverLogin } from './adapters/server';
 import { ReadOnlyFilesAdapter, pickLocalVault, rememberedLocalVault, reopenLocalVault, supportsFSAccess } from './adapters/localfs';
 import { RestApiAdapter } from './adapters/restapi';
+import { DemoAdapter, demoSeed } from './adapters/demo';
 import { App } from './ui/app';
 import { h, icon, notice } from './ui/dom';
 import { applyPrefs, loadPrefs } from './ui/settings';
@@ -18,23 +19,51 @@ applyPrefs(loadPrefs());
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyPrefs(loadPrefs()));
 
 let app: App | null = null;
+let demoTimer: ReturnType<typeof setInterval> | undefined;
+
+/** Demo-Vault starten (eigene Kopie nur in diesem Tab). `reset` = auf Ausgangszustand zurücksetzen. */
+function startDemo(reset = false) {
+  const demo = new DemoAdapter(demoSeed());
+  if (reset) demo.reset();
+  return start(demo);
+}
 
 async function start(adapter: VaultAdapter) {
+  clearInterval(demoTimer);
   try {
     localStorage.setItem(LAST, adapter.kind);
   } catch {
     /* egal */
   }
-  app = new App(adapter, () => {
+  const restartDemo = () => {
+    app?.destroy();
     app = null;
-    try {
-      localStorage.removeItem(LAST);
-      sessionStorage.removeItem(REMOTE);
-    } catch {
-      /* egal */
-    }
-    void showStart();
-  });
+    void startDemo(true);
+  };
+  app = new App(
+    adapter,
+    () => {
+      app = null;
+      clearInterval(demoTimer);
+      try {
+        localStorage.removeItem(LAST);
+        sessionStorage.removeItem(REMOTE);
+      } catch {
+        /* egal */
+      }
+      void showStart();
+    },
+    adapter instanceof DemoAdapter ? restartDemo : undefined,
+  );
+  if (adapter instanceof DemoAdapter) {
+    // Automatischer Reset nach Ablauf (zusätzlich zur Prüfung beim Laden)
+    demoTimer = setInterval(() => {
+      if (adapter.expired) {
+        notice('Die Demo wurde nach 4 Stunden automatisch zurückgesetzt.', 6000);
+        restartDemo();
+      }
+    }, 60_000);
+  }
   try {
     await app.mount(host);
   } catch (e) {
@@ -65,6 +94,10 @@ async function showStart() {
   } catch {
     /* egal */
   }
+
+  // Abgelaufene Demo-Daten sofort löschen; laufende Demo in diesem Tab fortsetzen (z.B. nach Neuladen)
+  DemoAdapter.purgeExpired();
+  if (last === 'demo' && DemoAdapter.hasSession()) return startDemo();
 
   // Automatisch verbinden, wenn möglich
   if (server && server.loggedIn && (last === 'server' || !last)) {
@@ -136,6 +169,13 @@ async function showStart() {
       h('label.source-check', {}, remember, ' Adresse merken (nicht auf fremden Rechnern)'),
       h('button.mod-cta', { type: 'submit', text: 'Verbinden' }),
       h('div.source-hint', { text: 'Passwort und Sitzung werden nicht gespeichert – beim Schließen des Tabs bist du abgemeldet (spätestens nach 12 Stunden).' }),
+      h(
+        'div.source-hint',
+        {},
+        'Du nutzt Self-hosted LiveSync? ',
+        h('a', { href: 'https://github.com/Atoxien/obsidian-browserui/blob/main/docs/livesync.md', target: '_blank', rel: 'noopener noreferrer', text: 'So bindest du deinen LiveSync-Vault an' }),
+        '.',
+      ),
       err,
     );
     cards.push(card('server', 'Eigener Server', 'Mit deinem self-hosted Vault Browser verbinden – ideal auf fremden Rechnern, ohne etwas zu installieren.', form));
@@ -234,6 +274,18 @@ async function showStart() {
       err,
     );
     cards.push(card('plug', 'Obsidian (Local REST API)', 'Mit dem laufenden Obsidian auf diesem PC verbinden – über das Community-Plugin „Local REST API“.', form));
+  }
+
+  // Demo – für jeden Besucher eine eigene Kopie, nur in diesem Tab
+  {
+    const demoCard = card(
+      'book',
+      'Demo ausprobieren',
+      'Ohne eigenen Vault testen: ein Beispiel-Vault nur in diesem Browser-Tab. Nichts wird gespeichert oder mit anderen geteilt; nach 4 Stunden oder beim Schließen des Tabs ist alles weg.',
+      h('div.source-form', {}, h('button', { text: 'Demo starten', onclick: () => void startDemo(true) })),
+    );
+    demoCard.classList.add('mod-demo');
+    cards.push(demoCard);
   }
 
   // 4) WebDAV – später
