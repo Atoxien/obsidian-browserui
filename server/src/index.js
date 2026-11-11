@@ -25,12 +25,13 @@ const app = await buildApp({
   sessionSecret: process.env.SESSION_SECRET,
   staticDir: process.env.STATIC_DIR || path.resolve(here, '../../web/dist'),
   secureCookie: process.env.SECURE_COOKIE === '1',
+  allowedOrigins: (process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
   logger: process.env.LOG !== '0',
 });
 
 const port = Number(process.env.PORT || 8080);
 const host = process.env.HOST || '0.0.0.0';
 await app.listen({ port, host });
-console.log(`Obsidian BrowserUI läuft auf http://${host}:${port}  (Vault: ${vaultPath})`);
+console.log(`Vault Browser läuft auf http://${host}:${port}  (Vault: ${vaultPath})`);
 
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => app.close().then(() => process.exit(0)));

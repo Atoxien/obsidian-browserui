@@ -12,37 +12,56 @@ export async function probeServer(base = ''): Promise<ServerInfo | null> {
     const r = await fetch(`${base}/api/info`, { credentials: 'same-origin' });
     if (!r.ok) return null;
     const j = (await r.json()) as ServerInfo;
-    return j.app === 'obsidian-browserui' ? j : null;
+    return j.app === 'vault-browser' ? j : null;
   } catch {
     return null;
   }
 }
 
-export async function serverLogin(password: string, base = ''): Promise<void> {
+/** Anmelden. Mit `base` (anderer Server) wird ein Token statt eines Cookies geliefert. */
+export async function serverLogin(password: string, base = ''): Promise<string | undefined> {
   const r = await fetch(`${base}/api/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-obui': '1' },
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({ password, token: Boolean(base) }),
   });
-  if (!r.ok) throw new Error(((await r.json().catch(() => ({}))) as { error?: string }).error ?? 'Login fehlgeschlagen');
+  const j = (await r.json().catch(() => ({}))) as { error?: string; token?: string };
+  if (!r.ok) throw new Error(j.error ?? 'Login fehlgeschlagen');
+  return j.token;
+}
+
+/** Normalisiert eine eingegebene Server-Adresse ("notes.example.com" -> "https://notes.example.com") */
+export function normalizeServerUrl(input: string): string {
+  let u = input.trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//i.test(u)) u = `https://${u}`;
+  return u;
 }
 
 export class ServerAdapter implements VaultAdapter {
   readonly kind = 'server';
   readonly readOnly = false;
+  /** Bei Token-Login (anderer Server): nichts dauerhaft im Browser speichern */
+  readonly ephemeral: boolean;
+  watch?: (cb: (e: ChangeEvent) => void) => () => void;
   private mtimes = new Map<string, number>();
 
   constructor(
     readonly name: string,
     private base = '',
-  ) {}
+    private token?: string,
+  ) {
+    this.ephemeral = Boolean(token);
+    // Live-Updates per SSE nur mit Cookie (EventSource kann keinen Authorization-Header senden);
+    // im Token-Modus wird beim Fokussieren des Fensters neu geladen.
+    if (!token) this.watch = (cb) => this.sse(cb);
+  }
 
   private async req(method: string, url: string, init: RequestInit = {}): Promise<Response> {
     const r = await fetch(this.base + url, {
       ...init,
       method,
-      credentials: 'same-origin',
-      headers: { 'x-obui': '1', ...(init.headers ?? {}) },
+      credentials: this.token ? 'omit' : 'same-origin',
+      headers: { 'x-obui': '1', ...(this.token ? { authorization: `Bearer ${this.token}` } : {}), ...(init.headers ?? {}) },
     });
     if (r.status === 401) throw new AuthError('Sitzung abgelaufen – bitte neu anmelden');
     if (r.status === 409) throw new ConflictError(((await r.json()) as { error: string }).error);
@@ -110,7 +129,7 @@ export class ServerAdapter implements VaultAdapter {
     this.mtimes.delete(path);
   }
 
-  watch(cb: (e: ChangeEvent) => void): () => void {
+  private sse(cb: (e: ChangeEvent) => void): () => void {
     const es = new EventSource(`${this.base}/api/events`);
     es.onmessage = (m) => {
       try {
@@ -123,6 +142,7 @@ export class ServerAdapter implements VaultAdapter {
   }
 
   async logout() {
-    await fetch(`${this.base}/api/logout`, { method: 'POST', headers: { 'x-obui': '1' } });
+    this.token = undefined;
+    if (!this.base) await fetch('/api/logout', { method: 'POST', headers: { 'x-obui': '1' } });
   }
 }

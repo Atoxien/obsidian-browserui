@@ -1,5 +1,5 @@
 {
-  "name": "@obsidian-browserui/server",
+  "name": "@vault-browser/server",
   "version": "0.1.0",
   "private": true,
   "type": "module",

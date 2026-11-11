@@ -2,7 +2,8 @@
 import crypto from 'node:crypto';
 
 const COOKIE = 'obui_session';
-const MAX_AGE_S = 60 * 60 * 24 * 30; // 30 Tage
+const MAX_AGE_S = 60 * 60 * 24 * 30; // 30 Tage (Cookie, eigener Server)
+const TOKEN_AGE_S = 60 * 60 * 12; // 12 Stunden (Token, z.B. fremder Rechner über GitHub Pages)
 
 export function createAuth({ password, secret, secureCookie }) {
   const enabled = Boolean(password);
@@ -13,8 +14,8 @@ export function createAuth({ password, secret, secureCookie }) {
     return crypto.createHmac('sha256', sessionSecret).update(value).digest('base64url');
   }
 
-  function issue() {
-    const exp = Math.floor(Date.now() / 1000) + MAX_AGE_S;
+  function issue(maxAge = MAX_AGE_S) {
+    const exp = Math.floor(Date.now() / 1000) + maxAge;
     const payload = `v1.${exp}.${crypto.randomBytes(8).toString('hex')}`;
     return `${payload}.${sign(payload)}`;
   }
@@ -38,8 +39,13 @@ export function createAuth({ password, secret, secureCookie }) {
     return crypto.timingSafeEqual(a, b);
   }
 
+  function bearer(req) {
+    const h = req.headers.authorization;
+    return typeof h === 'string' && h.startsWith('Bearer ') ? h.slice(7) : undefined;
+  }
+
   function isLoggedIn(req) {
-    return !enabled || verify(req.cookies?.[COOKIE]);
+    return !enabled || verify(req.cookies?.[COOKIE]) || verify(bearer(req));
   }
 
   /** Fastify-Hook für /api/* (außer Login/Info). */
@@ -66,6 +72,8 @@ export function createAuth({ password, secret, secureCookie }) {
         return reply.code(401).send({ error: 'Falsches Passwort' });
       }
       attempts.delete(ip);
+      // Token-Modus für Zugriffe von einer anderen Herkunft (z.B. GitHub Pages): nichts im Cookie
+      if (req.body?.token === true) return { ok: true, token: issue(TOKEN_AGE_S) };
       reply.setCookie(COOKIE, issue(), {
         path: '/',
         httpOnly: true,

@@ -55,6 +55,28 @@ export async function buildApp(opts) {
     secureCookie: opts.secureCookie ?? false,
   });
 
+  // CORS: erlaubt z.B. der auf GitHub Pages gehosteten Oberfläche den Zugriff auf diesen Server.
+  // Fremde Herkünfte melden sich per Token (Authorization-Header) an, nicht per Cookie.
+  const allowedOrigins = new Set((opts.allowedOrigins ?? []).map((o) => o.replace(/\/+$/, '')));
+  app.addHook('onRequest', async (req, reply) => {
+    const origin = req.headers.origin;
+    if (!origin || !allowedOrigins.has(origin)) return;
+    reply.header('access-control-allow-origin', origin);
+    reply.header('vary', 'Origin');
+    reply.header('access-control-expose-headers', 'x-mtime');
+    if (req.method === 'OPTIONS') {
+      reply.header('access-control-allow-methods', 'GET, PUT, POST, DELETE');
+      reply.header('access-control-allow-headers', 'authorization, content-type, x-obui, x-expected-mtime');
+      reply.header('access-control-max-age', '600');
+      // Chrome "Private Network Access": Seite im Internet -> Server im Heimnetz
+      if (req.headers['access-control-request-private-network'] === 'true') {
+        reply.header('access-control-allow-private-network', 'true');
+      }
+      reply.code(204).send();
+      return reply;
+    }
+  });
+
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof VaultError) return reply.code(err.status).send({ error: err.message });
     if (err.code === 'ENOENT') return reply.code(404).send({ error: 'Nicht gefunden' });
@@ -64,7 +86,7 @@ export async function buildApp(opts) {
   });
 
   app.get('/api/info', async (req) => ({
-    app: 'obsidian-browserui',
+    app: 'vault-browser',
     vaultName: path.basename(vault.realRoot),
     auth: auth.enabled,
     loggedIn: auth.isLoggedIn(req),

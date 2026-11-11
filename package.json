@@ -1,15 +1,33 @@
 {
-  "name": "obsidian-browserui",
+  "name": "vault-browser",
   "version": "0.1.0",
   "private": true,
-  "description": "Obsidian-Vault im Browser: self-hosted Server, lokaler Ordner oder Obsidian Local REST API",
+  "description": "Obsidian-Vaults im Browser lesen und bearbeiten – aus einem lokalen Ordner, vom eigenen Server oder direkt aus Obsidian. Ohne Installation auf fremden Rechnern nutzbar.",
   "type": "module",
-  "workspaces": ["web", "server"],
+  "workspaces": [
+    "web",
+    "server"
+  ],
   "scripts": {
     "dev": "npm run dev -w web",
     "build": "npm run build -w web",
     "start": "npm start -w server",
     "test": "npm test -w web && npm test -w server"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "obsidian",
+    "markdown",
+    "notes",
+    "self-hosted",
+    "vault",
+    "pkm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Atoxien/obsidian-browserui.git"
+  },
+  "homepage": "https://atoxien.github.io/obsidian-browserui/"
 }

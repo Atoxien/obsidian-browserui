@@ -5,7 +5,7 @@ erstellt: 2026-11-11
 ---
 # Willkommen in deinem Vault 👋
 
-Das ist ein **Beispiel-Vault**, um *Obsidian BrowserUI* auszuprobieren. Alles hier ist normales Markdown – Obsidian selbst kann denselben Ordner öffnen.
+Das ist ein **Beispiel-Vault**, um *Vault Browser* auszuprobieren. Alles hier ist normales Markdown – Obsidian selbst kann denselben Ordner öffnen.
 
 ## Links
 
@@ -18,7 +18,7 @@ Das ist ein **Beispiel-Vault**, um *Obsidian BrowserUI* auszuprobieren. Alles hi
 
 ## Aufgaben
 
-- [x] BrowserUI starten
+- [x] Vault Browser starten
 - [ ] Eine Notiz bearbeiten
 - [ ] Ein Bild per Drag & Drop einfügen
 

@@ -1,7 +1,8 @@
 services:
-  obsidian-browserui:
-    build: .
-    container_name: obsidian-browserui
+  vault-browser:
+    image: ghcr.io/atoxien/obsidian-browserui:latest
+    # build: .                              # alternativ selbst bauen
+    container_name: vault-browser
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -9,6 +10,7 @@ services:
       VAULT_PASSWORD: "bitte-ändern"        # Pflicht: Login-Passwort
       SESSION_SECRET: "langer-zufallswert"  # empfohlen: z.B. `openssl rand -hex 32`
       # SECURE_COOKIE: "1"                  # aktivieren, wenn hinter HTTPS-Reverse-Proxy
-      # Datei-Besitzer im Vault: Container läuft als UID 1000 (user "node")
+      # Zugriff von der GitHub-Pages-Oberfläche erlauben (z.B. für fremde Rechner):
+      # ALLOWED_ORIGINS: "https://atoxien.github.io"
     volumes:
-      - /pfad/zu/deinem/vault:/vault
+      - /pfad/zu/deinem/vault:/vault        # Container läuft als UID 1000 (user "node")

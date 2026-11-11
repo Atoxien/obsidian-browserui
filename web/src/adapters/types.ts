@@ -12,6 +12,8 @@ export interface VaultAdapter {
   readonly kind: 'server' | 'localfs' | 'restapi' | 'readonly';
   readonly name: string;
   readonly readOnly: boolean;
+  /** true = keine Spuren (geöffnete Tabs etc.) dauerhaft im Browser hinterlassen, z.B. auf fremden Rechnern */
+  readonly ephemeral?: boolean;
   list(): Promise<VaultFile[]>;
   read(path: string): Promise<string>;
   readBinary(path: string): Promise<Blob>;

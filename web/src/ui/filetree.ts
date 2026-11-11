@@ -12,6 +12,8 @@ export interface TreeActions {
   remove(path: string): void;
   upload(files: FileList, folder: string): void;
   readOnly: boolean;
+  /** localStorage oder (auf fremden Rechnern) sessionStorage */
+  storage: Storage;
 }
 
 interface Node {
@@ -31,7 +33,7 @@ export class FileTree {
 
   constructor(private actions: TreeActions) {
     try {
-      this.expanded = new Set(JSON.parse(localStorage.getItem(STORE) ?? '[]'));
+      this.expanded = new Set(JSON.parse(actions.storage.getItem(STORE) ?? '[]'));
     } catch {
       this.expanded = new Set();
     }
@@ -48,7 +50,7 @@ export class FileTree {
 
   private save() {
     try {
-      localStorage.setItem(STORE, JSON.stringify([...this.expanded]));
+      this.actions.storage.setItem(STORE, JSON.stringify([...this.expanded]));
     } catch {
       /* egal */
     }

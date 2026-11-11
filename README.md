@@ -1,23 +1,36 @@
-# Obsidian BrowserUI
+# Vault Browser
 
-Deinen [Obsidian](https://obsidian.md)-Vault im Browser **lesen und bearbeiten** – mit einer Oberfläche im Obsidian-Stil und voller Kompatibilität zu deinen Markdown-Dateien. Obsidian selbst kann parallel auf denselben Vault zugreifen.
+**Obsidian-Vaults im Browser lesen und bearbeiten – ohne Installation, auch auf fremden Rechnern.**
+
+Vault Browser öffnet deinen [Obsidian](https://obsidian.md)-Vault direkt im Browser: aus einem lokalen Ordner, von deinem eigenen Server oder aus dem laufenden Obsidian. Die Oberfläche ist an Obsidian angelehnt und arbeitet direkt auf deinen Markdown-Dateien – Wikilinks, Embeds, Callouts, Aufgaben, Eigenschaften und Rückverweise funktionieren wie gewohnt, und Obsidian kann parallel auf denselben Vault zugreifen.
+
+👉 **Direkt nutzen:** https://atoxien.github.io/obsidian-browserui/
 
 ![Screenshot](docs/screenshot-dark.png)
 
-> Unabhängiges Community-Projekt – nicht mit Obsidian / Dynalist Inc. verbunden.
+> Unabhängiges Community-Projekt – nicht verbunden mit Obsidian / Dynalist Inc.
 
-## Drei Wege zum Vault
+## Wege zum Vault
 
-| Modus | Wofür | Voraussetzung |
+| Weg | Wofür | Voraussetzung |
 | --- | --- | --- |
-| **Self-hosted Server** | Zugriff von überall (Handy, Arbeits-PC …) auf einen Vault, der auf NAS/Homeserver/VPS liegt | Docker oder Node ≥ 20 |
-| **Lokaler Ordner** | Vault direkt vom eigenen PC öffnen – auch aus **OneDrive, Dropbox, Google Drive, iCloud**, wenn deren Sync-Ordner eingebunden ist. Es wird nichts hochgeladen. | Chrome, Edge oder Brave (Firefox/Safari: nur lesen) |
-| **Obsidian Local REST API** | Mit dem laufenden Obsidian verbinden | Community-Plugin [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) |
+| **Eigener Server** | Schnell an einem fremden Laptop an deine Notizen: Seite öffnen, Server-Adresse + Passwort eingeben, fertig | Self-hosted Server (siehe unten), per HTTPS erreichbar |
+| **Lokaler Ordner** | Vault direkt vom PC öffnen – auch aus **OneDrive, Dropbox, Google Drive, iCloud**, wenn deren Sync-Ordner eingebunden ist. Es wird nichts hochgeladen. | Chrome, Edge oder Brave (Firefox/Safari: nur lesen) |
+| **Obsidian Local REST API** | Mit dem laufenden Obsidian auf diesem PC verbinden | Community-Plugin [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) |
 | WebDAV / Nextcloud | *geplant* | |
 
-Modus 2 und 3 funktionieren auch, wenn die Seite rein statisch gehostet wird (z.B. `web/dist` auf GitHub Pages) – dann ohne Server-Karte.
+Die Oberfläche gibt es auf zwei Arten – beides ist dieselbe App:
+
+1. **Gehostet auf GitHub Pages** (Link oben): nichts installieren. Die Seite ist rein statisch, deine Notizen gehen nur zwischen deinem Browser und deiner Quelle (Ordner, eigener Server, Obsidian) hin und her.
+2. **Self-hosted**: der Server liefert die Oberfläche gleich mit aus (`https://dein-server/`). Dann erscheint auf der Startseite direkt „Server-Vault“.
 
 ![Startseite](docs/screenshot-start.png)
+
+### Auf fremden Rechnern
+
+- Beim Weg „Eigener Server“ wird **kein Cookie und kein Passwort gespeichert**. Die Sitzung gilt nur im aktuellen Tab und läuft spätestens nach 12 Stunden ab; offene Notizen und Ordnerzustand liegen nur im Sitzungsspeicher des Tabs.
+- „Adresse merken“ nicht ankreuzen.
+- Nach Benutzung unten links **„Vault wechseln / abmelden“** wählen oder den Tab schließen.
 
 ## Funktionen
 
@@ -55,17 +68,20 @@ Modus 2 und 3 funktionieren auch, wenn die Seite rein statisch gehostet wird (z.
 
 ### Docker Compose
 
+Ein fertiges Image wird bei jedem Push auf `main` gebaut: `ghcr.io/atoxien/obsidian-browserui` (amd64 + arm64, läuft also auch auf Raspberry Pi/NAS).
+
 ```yaml
 services:
-  obsidian-browserui:
-    build: https://github.com/Atoxien/obsidian-browserui.git
+  vault-browser:
+    image: ghcr.io/atoxien/obsidian-browserui:latest
     restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
       VAULT_PASSWORD: "dein-passwort"
       SESSION_SECRET: "zufälliger-langer-wert"
-      # SECURE_COOKIE: "1"   # hinter HTTPS
+      SECURE_COOKIE: "1"                              # hinter HTTPS
+      ALLOWED_ORIGINS: "https://atoxien.github.io"    # Zugriff über die GitHub-Pages-Seite erlauben
     volumes:
       - /pfad/zu/deinem/vault:/vault
 ```
@@ -74,7 +90,7 @@ services:
 docker compose up -d
 ```
 
-Dann `http://<server>:8080` öffnen. Der Container läuft als Benutzer `node` (UID 1000) – der Vault-Ordner muss für diese UID beschreibbar sein.
+Dann `http://<server>:8080` öffnen (oder über die GitHub-Pages-Seite verbinden). Der Container läuft als Benutzer `node` (UID 1000) – der Vault-Ordner muss für diese UID beschreibbar sein.
 
 ### Ohne Docker
 
@@ -99,12 +115,15 @@ VAULT_PATH=/pfad/zum/vault VAULT_PASSWORD=geheim npm start
 | `SESSION_SECRET` | zufällig | Signatur der Login-Cookies; setzen, damit Logins Neustarts überleben |
 | `SECURE_COOKIE` | `0` | `1` = Cookie nur über HTTPS (hinter Reverse-Proxy empfohlen) |
 | `PORT` / `HOST` | `8080` / `0.0.0.0` | |
+| `ALLOWED_ORIGINS` | – | Kommagetrennte Herkünfte, deren Oberfläche diesen Server nutzen darf, z.B. `https://atoxien.github.io`. Nötig für den Weg „Eigener Server“ von GitHub Pages aus. |
 | `NO_AUTH` | – | `1` = ohne Passwort (nur für lokale Tests!) |
 
 ### Sicherheit
 
 - **Immer hinter HTTPS betreiben**, wenn der Server aus dem Internet erreichbar ist (z.B. Caddy, Traefik, nginx; oder nur über VPN/Tailscale). Dann `SECURE_COOKIE=1` setzen.
 - Login mit Rate-Limit, signiertem HttpOnly-/SameSite-Cookie, CSRF-Schutz über Pflicht-Header.
+- Von fremden Herkünften (GitHub Pages) nur, wenn in `ALLOWED_ORIGINS` eingetragen; Anmeldung dann per kurzlebigem Token (12 h) statt Cookie.
+- Für den Zugriff von GitHub Pages muss der Server per **HTTPS** erreichbar sein (Browser blockieren sonst den Zugriff von einer HTTPS-Seite). Chrome fragt ggf. einmal nach, ob die Seite auf Geräte im lokalen Netzwerk zugreifen darf.
 - Dateizugriffe sind auf den Vault beschränkt (Schutz gegen `../` und Symlink-Ausbrüche).
 - Gerendertes HTML wird mit DOMPurify bereinigt.
 
@@ -120,7 +139,7 @@ notes.example.com {
 
 1. In Obsidian das Community-Plugin **Local REST API** installieren und aktivieren.
 2. API-Key aus den Plugin-Einstellungen kopieren.
-3. In der BrowserUI „Obsidian (Local REST API)“ wählen, URL `https://127.0.0.1:27124` und Key eintragen.
+3. Im Vault Browser „Obsidian (Local REST API)“ wählen, URL `https://127.0.0.1:27124` und Key eintragen.
 4. Das Plugin nutzt ein selbstsigniertes Zertifikat: einmal **„Zertifikat im Browser akzeptieren“** anklicken und bestätigen – oder im Plugin den HTTP-Port `27123` aktivieren.
 
 Hinweis: Die REST-API kennt keine leeren Ordner und kein natives Umbenennen; Umbenennen erfolgt als Kopieren + Löschen.
@@ -158,6 +177,8 @@ examples/vault/   Beispiel-Vault zum Ausprobieren
 ```
 
 Neue Quellen (z.B. WebDAV) implementieren das Interface in `web/src/adapters/types.ts`.
+
+GitHub Actions: `ci.yml` (Tests + Build), `pages.yml` (Veröffentlichung auf GitHub Pages bei Push auf `main`), `docker.yml` (Image nach `ghcr.io`).
 
 ## Lizenz
 

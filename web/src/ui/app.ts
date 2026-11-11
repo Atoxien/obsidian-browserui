@@ -70,6 +70,7 @@ export class App {
     const ro = adapter.readOnly;
     this.tree = new FileTree({
       readOnly: ro,
+      storage: adapter.ephemeral ? sessionStorage : localStorage,
       open: (p, nt) => void this.openFile(p, { newTab: nt }),
       newNote: (f) => void this.createNote(f),
       newFolder: (f) => void this.createFolder(f),
@@ -668,7 +669,7 @@ export class App {
     }
     tab.tabEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     this.tree.setActive(tab.path);
-    document.title = `${stripExt(basename(tab.path))} – ${this.adapter.name} – Obsidian BrowserUI`;
+    document.title = `${stripExt(basename(tab.path))} – ${this.adapter.name} – Vault Browser`;
     this.renderRight();
     this.updateStatus();
     this.saveSession();
@@ -1261,6 +1262,13 @@ export class App {
     for (const t of this.tabs) if (t.dirty) await this.saveTab(t);
     if (this.adapter instanceof ServerAdapter) await this.adapter.logout().catch(() => {});
     this.destroy();
+    if (this.adapter.ephemeral) {
+      try {
+        sessionStorage.clear();
+      } catch {
+        /* egal */
+      }
+    }
     this.onExit();
   }
 
@@ -1281,9 +1289,13 @@ export class App {
     return `obui.session.${this.adapter.kind}.${this.adapter.name}`;
   }
 
+  private store() {
+    return this.adapter.ephemeral ? sessionStorage : localStorage;
+  }
+
   private saveSession() {
     try {
-      localStorage.setItem(this.sessionKey(), JSON.stringify({ tabs: this.tabs.map((t) => ({ path: t.path, mode: t.mode })), active: this.active ? this.tabs.indexOf(this.active) : -1 }));
+      this.store().setItem(this.sessionKey(), JSON.stringify({ tabs: this.tabs.map((t) => ({ path: t.path, mode: t.mode })), active: this.active ? this.tabs.indexOf(this.active) : -1 }));
     } catch {
       /* egal */
     }
@@ -1292,7 +1304,7 @@ export class App {
   private restoreSession() {
     let s: { tabs: { path: string; mode: Mode }[]; active: number } | null = null;
     try {
-      s = JSON.parse(localStorage.getItem(this.sessionKey()) ?? 'null');
+      s = JSON.parse(this.store().getItem(this.sessionKey()) ?? 'null');
     } catch {
       /* egal */
     }

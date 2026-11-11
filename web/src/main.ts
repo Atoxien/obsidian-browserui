@@ -1,7 +1,7 @@
 import 'katex/dist/katex.min.css';
 import './styles/obsidian.css';
 import type { VaultAdapter } from './adapters/types';
-import { ServerAdapter, probeServer, serverLogin } from './adapters/server';
+import { ServerAdapter, normalizeServerUrl, probeServer, serverLogin } from './adapters/server';
 import { ReadOnlyFilesAdapter, pickLocalVault, rememberedLocalVault, reopenLocalVault, supportsFSAccess } from './adapters/localfs';
 import { RestApiAdapter } from './adapters/restapi';
 import { App } from './ui/app';
@@ -11,6 +11,8 @@ import { applyPrefs, loadPrefs } from './ui/settings';
 const host = document.getElementById('app')!;
 const LAST = 'obui.last';
 const REST = 'obui.rest';
+const REMOTE = 'obui.remote'; // sessionStorage: {url, token, name} – verschwindet mit dem Tab
+const REMOTE_URL = 'obui.remote.url'; // localStorage: nur wenn "Adresse merken" gewählt
 
 applyPrefs(loadPrefs());
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyPrefs(loadPrefs()));
@@ -27,6 +29,7 @@ async function start(adapter: VaultAdapter) {
     app = null;
     try {
       localStorage.removeItem(LAST);
+      sessionStorage.removeItem(REMOTE);
     } catch {
       /* egal */
     }
@@ -51,9 +54,17 @@ function errorLine() {
 }
 
 async function showStart() {
-  document.title = 'Obsidian BrowserUI';
+  document.title = 'Vault Browser';
   const server = await probeServer();
   const last = localStorage.getItem(LAST);
+
+  // Bestehende Sitzung mit eigenem Server (in diesem Tab) fortsetzen
+  try {
+    const r = JSON.parse(sessionStorage.getItem(REMOTE) ?? 'null') as { url: string; token: string; name: string } | null;
+    if (r && !server) return start(new ServerAdapter(r.name, r.url, r.token));
+  } catch {
+    /* egal */
+  }
 
   // Automatisch verbinden, wenn möglich
   if (server && server.loggedIn && (last === 'server' || !last)) {
@@ -85,6 +96,49 @@ async function showStart() {
       err,
     );
     cards.push(card('server', `Server-Vault „${server.vaultName}“`, 'Vault auf diesem Server (self-hosted). Änderungen landen direkt im Vault-Ordner.', form));
+  } else {
+    // 1b) Eigener Server von einer anderen Adresse aus (z.B. diese Seite auf GitHub Pages, fremder Laptop)
+    const err = errorLine();
+    const savedUrl = localStorage.getItem(REMOTE_URL) ?? '';
+    const url = h('input', { type: 'url', value: savedUrl, placeholder: 'https://notizen.example.com', autocomplete: 'url' });
+    const pw = h('input', { type: 'password', placeholder: 'Passwort', autocomplete: 'current-password' });
+    const remember = h('input', { type: 'checkbox', checked: Boolean(savedUrl) });
+    const form = h(
+      'form.source-form',
+      {
+        onsubmit: async (e: Event) => {
+          e.preventDefault();
+          err.textContent = '';
+          const base = normalizeServerUrl(url.value);
+          try {
+            const info = await probeServer(base);
+            if (!info) {
+              throw new Error(
+                'Server nicht erreichbar. Läuft er per HTTPS und steht diese Seite in ALLOWED_ORIGINS (' + location.origin + ')?',
+              );
+            }
+            const token = info.auth ? await serverLogin(pw.value, base) : undefined;
+            try {
+              if (remember.checked) localStorage.setItem(REMOTE_URL, base);
+              else localStorage.removeItem(REMOTE_URL);
+              if (token) sessionStorage.setItem(REMOTE, JSON.stringify({ url: base, token, name: info.vaultName }));
+            } catch {
+              /* egal */
+            }
+            await start(new ServerAdapter(info.vaultName, base, token));
+          } catch (ex) {
+            err.textContent = (ex as Error).message;
+          }
+        },
+      },
+      url,
+      pw,
+      h('label.source-check', {}, remember, ' Adresse merken (nicht auf fremden Rechnern)'),
+      h('button.mod-cta', { type: 'submit', text: 'Verbinden' }),
+      h('div.source-hint', { text: 'Passwort und Sitzung werden nicht gespeichert – beim Schließen des Tabs bist du abgemeldet (spätestens nach 12 Stunden).' }),
+      err,
+    );
+    cards.push(card('server', 'Eigener Server', 'Mit deinem self-hosted Vault Browser verbinden – ideal auf fremden Rechnern, ohne etwas zu installieren.', form));
   }
 
   // 2) Lokaler Ordner
@@ -189,9 +243,15 @@ async function showStart() {
     h(
       'div.start-screen',
       {},
-      h('div.start-header', {}, h('div.start-logo', {}, icon('vault', 40)), h('h1', { text: 'Obsidian BrowserUI' }), h('p', { text: 'Wähle, wie du auf deinen Vault zugreifen möchtest.' })),
+      h('div.start-header', {}, h('div.start-logo', {}, icon('vault', 40)), h('h1', { text: 'Vault Browser' }), h('p', { text: 'Deine Obsidian-Notizen im Browser – wähle, wie du auf deinen Vault zugreifen möchtest.' })),
       h('div.source-grid', {}, ...cards),
-      h('div.start-footer', { text: 'Dein Vault bleibt, wo er ist – diese Seite liest und schreibt direkt die Markdown-Dateien, kompatibel mit Obsidian.' }),
+      h(
+        'div.start-footer',
+        {},
+        h('div', { text: 'Dein Vault bleibt, wo er ist – diese Seite liest und schreibt direkt die Markdown-Dateien, kompatibel mit Obsidian. Es gibt keinen Server dieser Seite, der deine Daten sieht.' }),
+        h('div', { text: 'Auf fremden Rechnern: nach Benutzung unten links „Vault wechseln / abmelden“ wählen.' }),
+        h('div', { text: 'Unabhängiges Projekt, nicht verbunden mit Obsidian / Dynalist Inc.' }),
+      ),
     ),
   );
 

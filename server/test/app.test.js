@@ -18,7 +18,7 @@ before(async () => {
   await fs.writeFile(path.join(dir, 'Start.md'), '# Hallo\n[[Ordner/Zwei]]');
   await fs.writeFile(path.join(dir, 'Ordner', 'Zwei.md'), 'zwei');
   await fs.symlink(outside, path.join(dir, 'link'));
-  app = await buildApp({ vaultPath: dir, password: 'pw', watchFiles: false });
+  app = await buildApp({ vaultPath: dir, password: 'pw', watchFiles: false, allowedOrigins: ['https://atoxien.github.io'] });
 });
 
 after(async () => {
@@ -122,4 +122,26 @@ test('Schreiben, Konflikt, Umbenennen, Löschen', async () => {
   const del = await app.inject({ method: 'DELETE', url: '/api/file?path=Neu/Umbenannt.md', cookies: cookie, headers: H });
   assert.equal(del.statusCode, 200);
   assert.equal(await fs.readFile(path.join(dir, '.trash', 'Neu', 'Umbenannt.md'), 'utf8'), 'Inhalt');
+});
+
+test('CORS nur für erlaubte Herkunft, Token-Login', async () => {
+  const pre = await app.inject({
+    method: 'OPTIONS',
+    url: '/api/files',
+    headers: { origin: 'https://atoxien.github.io', 'access-control-request-private-network': 'true' },
+  });
+  assert.equal(pre.statusCode, 204);
+  assert.equal(pre.headers['access-control-allow-origin'], 'https://atoxien.github.io');
+  assert.equal(pre.headers['access-control-allow-private-network'], 'true');
+  const evil = await app.inject({ url: '/api/info', headers: { origin: 'https://evil.example' } });
+  assert.equal(evil.headers['access-control-allow-origin'], undefined);
+
+  const login = await app.inject({ method: 'POST', url: '/api/login', payload: { password: 'pw', token: true } });
+  const { token } = login.json();
+  assert.ok(token);
+  assert.equal(login.cookies.length, 0);
+  const r = await app.inject({ url: '/api/files', headers: { authorization: `Bearer ${token}` } });
+  assert.equal(r.statusCode, 200);
+  const bad = await app.inject({ url: '/api/files', headers: { authorization: `Bearer ${token}x` } });
+  assert.equal(bad.statusCode, 401);
 });
