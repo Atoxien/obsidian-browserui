@@ -11,7 +11,7 @@ export type ChangeEvent = { event: string; path: string };
 
 /** Gemeinsame Schnittstelle aller Vault-Quellen (Server, lokaler Ordner, Obsidian REST API, später WebDAV). */
 export interface VaultAdapter {
-  readonly kind: 'server' | 'localfs' | 'restapi' | 'readonly' | 'demo';
+  readonly kind: 'server' | 'localfs' | 'restapi' | 'readonly' | 'demo' | 'livesync';
   readonly name: string;
   readonly readOnly: boolean;
   /** true = keine Spuren (geöffnete Tabs etc.) dauerhaft im Browser hinterlassen, z.B. auf fremden Rechnern */

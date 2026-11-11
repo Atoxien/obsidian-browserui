@@ -14,8 +14,8 @@ Vault Browser öffnet deinen [Obsidian](https://obsidian.md)-Vault direkt im Bro
 
 | Weg | Wofür | Voraussetzung |
 | --- | --- | --- |
-| **Eigener Server** | Von jedem Laptop an deine Notizen: Seite öffnen, Server-Adresse + Passwort eingeben, fertig | Self-hosted Server (siehe unten), per HTTPS erreichbar |
-| ↳ **mit Self-hosted LiveSync** | Dein Vault wird per LiveSync (CouchDB) synchronisiert? Dann bindet der Server ihn über die offizielle livesync-bridge an – Änderungen landen auf allen Obsidian-Geräten | [Anleitung: docs/livesync.md](docs/livesync.md) |
+| **Self-hosted LiveSync** | Dein Vault wird per [Self-hosted LiveSync](https://github.com/vrtmrz/obsidian-livesync) (CouchDB) synchronisiert? Dann verbindet sich die Seite **direkt** mit deiner CouchDB – wie die Obsidian-App am Handy, inkl. Ende-zu-Ende-Verschlüsselung. Anmelden per Setup-URI oder Zugangsdaten. | Einmal CORS in CouchDB freigeben – [Anleitung](docs/livesync.md) |
+| **Eigener Vault-Browser-Server** | Vault liegt als Ordner auf deinem Server (oder LiveSync über die [Bridge](docs/livesync.md#weg-b-über-livesync-bridge-server)) | Self-hosted Server (siehe unten), per HTTPS erreichbar |
 | **Lokaler Ordner** | Vault direkt vom PC öffnen – auch aus **OneDrive, Dropbox, Google Drive, iCloud**, wenn deren Sync-Ordner eingebunden ist. Es wird nichts hochgeladen. | Chrome, Edge oder Brave (Firefox/Safari: nur lesen) |
 | **Obsidian Local REST API** | Mit dem laufenden Obsidian auf diesem PC verbinden | Community-Plugin [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) |
 | **Demo** | Ausprobieren ohne eigenen Vault | nichts |
@@ -177,7 +177,7 @@ Aufbau:
 ```
 server/   Fastify-Server: Vault-API, Login, Datei-Watch (SSE)
 web/      Frontend (Vite + TypeScript, ohne Framework)
-  src/adapters/   VaultAdapter: server, localfs, restapi, demo (WebDAV folgt)
+  src/adapters/   VaultAdapter: livesync, server, localfs, restapi, demo (WebDAV folgt)
   src/vault/      Index, Link-Auflösung, Backlinks, Suche, Frontmatter
   src/markdown/   markdown-it mit Obsidian-Erweiterungen
   src/ui/         Workspace, Editor, Lese-Ansicht, Dateibaum

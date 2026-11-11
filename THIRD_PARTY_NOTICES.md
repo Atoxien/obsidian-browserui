@@ -15,6 +15,10 @@ Alle Komponenten stehen unter freizügigen Lizenzen, die mit der AGPL-3.0 verein
 | [Fastify](https://fastify.dev/) und Plugins (`@fastify/static`, `@fastify/cookie`) | MIT (einzelne Unterpakete BSD-3-Clause, ISC) | Server |
 | [chokidar](https://github.com/paulmillr/chokidar) | MIT | Datei-Überwachung |
 | `glob`, `minimatch`, `minipass`, `lru-cache`, `path-scurry` | BlueOak-1.0.0 | Abhängigkeiten von `@fastify/static` |
+| [Self-hosted LiveSync Commonlib](https://github.com/vrtmrz/livesync-commonlib) (`@vrtmrz/livesync-commonlib`) | MIT | Direkte Verbindung zu LiveSync-Vaults (nur im LiveSync-Paket geladen) |
+| ↳ [PouchDB](https://pouchdb.com/) (`pouchdb-*`), `transform-pouch`, `diff-match-patch`, AWS SDK / Smithy (`@aws-sdk/*`, `@smithy/*`, `@aws-crypto/*`) | Apache-2.0 | Abhängigkeiten der Commonlib |
+| ↳ `octagonal-wheels`, `xxhash-wasm`, `fflate`, `idb` u.a. | MIT bzw. ISC | Abhängigkeiten der Commonlib |
+| ↳ `tslib` (0BSD), `fetch-cookie` (Unlicense), `tough-cookie` / `ieee754` (BSD-3-Clause), `spark-md5` (WTFPL oder MIT) | wie angegeben | Abhängigkeiten der Commonlib |
 | [Lucide Icons](https://lucide.dev/) (einzelne SVG-Pfade in `web/src/ui/dom.ts`) | ISC | Symbole |
 
 ## Lucide – ISC License

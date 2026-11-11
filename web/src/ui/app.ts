@@ -1360,7 +1360,7 @@ function rotated(el: SVGElement, deg: number) {
 }
 
 function sourceLabel(a: VaultAdapter) {
-  return { server: 'Server', localfs: 'Lokaler Ordner', restapi: 'Obsidian REST API', readonly: 'Lokal (nur lesen)', demo: 'Demo' }[a.kind];
+  return { server: 'Server', localfs: 'Lokaler Ordner', restapi: 'Obsidian REST API', readonly: 'Lokal (nur lesen)', demo: 'Demo', livesync: 'Self-hosted LiveSync' }[a.kind];
 }
 
 function highlightTerms(text: string, terms: string[]) {

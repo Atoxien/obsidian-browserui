@@ -19,6 +19,7 @@
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.15",
     "@lezer/highlight": "^1.2.5",
+    "@vrtmrz/livesync-commonlib": "^0.3.1",
     "codemirror": "^6.0.2",
     "dompurify": "^3.4.17",
     "katex": "^0.19.1",

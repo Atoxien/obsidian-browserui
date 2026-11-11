@@ -17,6 +17,162 @@ const LAST = 'obui.last';
 const REST = 'obui.rest';
 const REMOTE = 'obui.remote'; // sessionStorage: {url, token, name} – verschwindet mit dem Tab
 const REMOTE_URL = 'obui.remote.url'; // localStorage: nur wenn "Adresse merken" gewählt
+const LIVESYNC = 'obui.livesync'; // sessionStorage: Zugangsdaten nur für diesen Tab
+const LIVESYNC_SAVED = 'obui.livesync.saved'; // localStorage: nur Adresse/Datenbank/Benutzer, wenn gewünscht
+
+/** Felder einer LiveSync-Verbindung (das Adapter-Modul selbst wird erst beim Verbinden geladen) */
+interface LiveSyncConfig {
+  url: string;
+  database: string;
+  username: string;
+  password: string;
+  passphrase: string;
+  idDerivationKey?: string;
+}
+
+async function startLiveSync(cfg: LiveSyncConfig) {
+  const { LiveSyncAdapter } = await import('./adapters/livesync');
+  const adapter = await LiveSyncAdapter.connect(cfg);
+  try {
+    sessionStorage.setItem(LIVESYNC, JSON.stringify(cfg));
+  } catch {
+    /* egal */
+  }
+  await start(adapter);
+}
+
+/** Karte „Self-hosted LiveSync“: direkt mit der CouchDB verbinden, wie die Obsidian-App */
+function liveSyncCard(): HTMLElement {
+  const err = errorLine();
+  let saved: Partial<LiveSyncConfig> = {};
+  try {
+    saved = JSON.parse(localStorage.getItem(LIVESYNC_SAVED) ?? '{}');
+  } catch {
+    /* egal */
+  }
+  const busy = (btn: HTMLButtonElement, on: boolean, label: string) => {
+    btn.disabled = on;
+    btn.textContent = on ? 'Verbinde …' : label;
+  };
+  const fail = (ex: unknown) => {
+    err.textContent = (ex as Error).message || String(ex);
+  };
+
+  // a) Setup-URI (empfohlen) – enthält alle Einstellungen
+  const uri = h('textarea.source-textarea', { rows: 3, placeholder: 'obsidian://setuplivesync?settings=…', spellcheck: 'false' }) as HTMLTextAreaElement;
+  const uriPw = h('input', { type: 'password', placeholder: 'Passwort der Setup-URI', autocomplete: 'off' }) as HTMLInputElement;
+  const uriBtn = h('button.mod-cta', { type: 'submit', text: 'Mit Setup-URI verbinden' }) as HTMLButtonElement;
+  const uriForm = h(
+    'form.source-form',
+    {
+      onsubmit: async (e: Event) => {
+        e.preventDefault();
+        err.textContent = '';
+        busy(uriBtn, true, 'Mit Setup-URI verbinden');
+        try {
+          const { configFromSetupURI } = await import('./adapters/livesync');
+          await startLiveSync(await configFromSetupURI(uri.value, uriPw.value));
+        } catch (ex) {
+          fail(ex);
+        } finally {
+          busy(uriBtn, false, 'Mit Setup-URI verbinden');
+        }
+      },
+    },
+    uri,
+    uriPw,
+    uriBtn,
+    h('div.source-hint', { text: 'In Obsidian: Befehlspalette → „Self-hosted LiveSync: Copy the setup URI“ (bzw. in den LiveSync-Einstellungen). Das Passwort ist das, das du dabei vergibst.' }),
+  );
+
+  // b) Manuell
+  const url = h('input', { type: 'url', value: saved.url ?? '', placeholder: 'CouchDB-Adresse, z.B. https://couchdb.example.com', autocomplete: 'url' }) as HTMLInputElement;
+  const db = h('input', { type: 'text', value: saved.database ?? '', placeholder: 'Datenbankname', autocomplete: 'off', spellcheck: 'false' }) as HTMLInputElement;
+  const user = h('input', { type: 'text', value: saved.username ?? '', placeholder: 'CouchDB-Benutzer', autocomplete: 'username' }) as HTMLInputElement;
+  const pw = h('input', { type: 'password', placeholder: 'CouchDB-Passwort', autocomplete: 'current-password' }) as HTMLInputElement;
+  const pass = h('input', { type: 'password', placeholder: 'E2EE-Passphrase (leer, wenn nicht verschlüsselt)', autocomplete: 'off' }) as HTMLInputElement;
+  const idKey = h('input', { type: 'password', placeholder: 'Wiederherstellungscode sls-id-v1:… (nur falls verlangt)', autocomplete: 'off' }) as HTMLInputElement;
+  const remember = h('input', { type: 'checkbox', checked: Boolean(saved.url) }) as HTMLInputElement;
+  const manBtn = h('button.mod-cta', { type: 'submit', text: 'Verbinden' }) as HTMLButtonElement;
+  const manForm = h(
+    'form.source-form',
+    {
+      onsubmit: async (e: Event) => {
+        e.preventDefault();
+        err.textContent = '';
+        const cfg: LiveSyncConfig = {
+          url: url.value.trim(),
+          database: db.value.trim(),
+          username: user.value.trim(),
+          password: pw.value,
+          passphrase: pass.value,
+          idDerivationKey: idKey.value.trim() || undefined,
+        };
+        if (!cfg.url || !cfg.database) {
+          err.textContent = 'Bitte CouchDB-Adresse und Datenbanknamen angeben.';
+          return;
+        }
+        try {
+          if (remember.checked) localStorage.setItem(LIVESYNC_SAVED, JSON.stringify({ url: cfg.url, database: cfg.database, username: cfg.username }));
+          else localStorage.removeItem(LIVESYNC_SAVED);
+        } catch {
+          /* egal */
+        }
+        busy(manBtn, true, 'Verbinden');
+        try {
+          await startLiveSync(cfg);
+        } catch (ex) {
+          fail(ex);
+        } finally {
+          busy(manBtn, false, 'Verbinden');
+        }
+      },
+    },
+    url,
+    db,
+    user,
+    pw,
+    pass,
+    idKey,
+    h('label.source-check', {}, remember, ' Adresse, Datenbank und Benutzer merken (keine Passwörter)'),
+    manBtn,
+  );
+
+  // Umschalter Setup-URI / Manuell
+  const tabs = h('div.source-tabs');
+  const body = h('div');
+  const show = (which: 'uri' | 'manual') => {
+    body.replaceChildren(which === 'uri' ? uriForm : manForm);
+    tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('is-active', b.dataset.tab === which));
+  };
+  tabs.append(
+    h('button', { type: 'button', 'data-tab': 'uri', text: 'Setup-URI', onclick: () => show('uri') }),
+    h('button', { type: 'button', 'data-tab': 'manual', text: 'Manuell', onclick: () => show('manual') }),
+  );
+  show(saved.url ? 'manual' : 'uri');
+
+  const c = card(
+    'cloud',
+    'Self-hosted LiveSync',
+    'Direkt mit deiner LiveSync-Datenbank (CouchDB) verbinden – wie die Obsidian-App am Handy. Ende-zu-Ende-Verschlüsselung wird im Browser entschlüsselt; nichts läuft über fremde Server.',
+    h(
+      'div.source-form',
+      {},
+      tabs,
+      body,
+      h(
+        'div.source-hint',
+        {},
+        `Einmalig nötig: In CouchDB unter CORS „${location.origin}“ erlauben. `,
+        h('a', { href: `${SOURCE_URL}/blob/main/docs/livesync.md`, target: '_blank', rel: 'noopener noreferrer', text: 'Anleitung' }),
+      ),
+      h('div.source-hint', { text: 'Zugangsdaten bleiben nur in diesem Tab und sind beim Schließen weg.' }),
+      err,
+    ),
+  );
+  c.classList.add('mod-livesync');
+  return c;
+}
 
 applyPrefs(loadPrefs());
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyPrefs(loadPrefs()));
@@ -51,6 +207,7 @@ async function start(adapter: VaultAdapter) {
       try {
         localStorage.removeItem(LAST);
         sessionStorage.removeItem(REMOTE);
+        sessionStorage.removeItem(LIVESYNC);
       } catch {
         /* egal */
       }
@@ -98,6 +255,20 @@ async function showStart() {
     /* egal */
   }
 
+  // Bestehende LiveSync-Sitzung (in diesem Tab) fortsetzen
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(LIVESYNC) ?? 'null') as LiveSyncConfig | null;
+    if (saved && last === 'livesync') {
+      try {
+        return await startLiveSync(saved);
+      } catch {
+        sessionStorage.removeItem(LIVESYNC);
+      }
+    }
+  } catch {
+    /* egal */
+  }
+
   // Abgelaufene Demo-Daten sofort löschen; laufende Demo in diesem Tab fortsetzen (z.B. nach Neuladen)
   DemoAdapter.purgeExpired();
   if (last === 'demo' && DemoAdapter.hasSession()) return startDemo();
@@ -107,7 +278,7 @@ async function showStart() {
     return start(new ServerAdapter(server.vaultName));
   }
 
-  const cards: HTMLElement[] = [];
+  const cards: HTMLElement[] = [liveSyncCard()];
 
   // 1) Self-hosted Server
   if (server) {
@@ -172,16 +343,9 @@ async function showStart() {
       h('label.source-check', {}, remember, ' Adresse merken (nicht auf fremden Rechnern)'),
       h('button.mod-cta', { type: 'submit', text: 'Verbinden' }),
       h('div.source-hint', { text: 'Passwort und Sitzung werden nicht gespeichert – beim Schließen des Tabs bist du abgemeldet (spätestens nach 12 Stunden).' }),
-      h(
-        'div.source-hint',
-        {},
-        'Du nutzt Self-hosted LiveSync? ',
-        h('a', { href: `${SOURCE_URL}/blob/main/docs/livesync.md`, target: '_blank', rel: 'noopener noreferrer', text: 'So bindest du deinen LiveSync-Vault an' }),
-        '.',
-      ),
       err,
     );
-    cards.push(card('server', 'Eigener Server', 'Mit deinem self-hosted Vault Browser verbinden – ideal auf fremden Rechnern, ohne etwas zu installieren.', form));
+    cards.push(card('server', 'Eigener Vault-Browser-Server', 'Mit einem selbst gehosteten Vault-Browser-Server verbinden (Vault als Ordner auf dem Server).', form));
   }
 
   // 2) Lokaler Ordner
