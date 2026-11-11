@@ -136,6 +136,9 @@ export async function configFromSetupURI(uri: string, setupPassphrase: string): 
   if (!url || !database) throw new Error('In der Setup-URI fehlt die CouchDB-Verbindung.');
   const settings: Record<string, unknown> = {};
   for (const k of [...TWEAK_KEYS, 'encrypt', 'usePathObfuscation']) if (s[k] !== undefined && s[k] !== '') settings[k] = s[k];
+  // Der Decoder setzt idDerivationVersion: 0 als Platzhalter, wenn die URI keinen Schlüssel enthält
+  // (LiveSync lässt verschlüsselt gespeicherte Schlüssel weg). Dann entscheidet die Datenbank bzw. der eingegebene Code.
+  if (!s.idDerivationKey) delete settings.idDerivationVersion;
   return {
     settings,
     url,
@@ -167,7 +170,7 @@ export function buildOptions(cfg: LiveSyncConfig, tweaks: Tweaks | undefined): D
   }
   const idKey = normalizeIdKey(cfg.idDerivationKey);
   if (t.idDerivationVersion === 1 && !idKey) {
-    throw new Error('Dieser Vault nutzt einen ID-Schlüssel. Bitte den Wiederherstellungscode aus LiveSync („Show current recovery code“) angeben.');
+    throw new Error(ID_KEY_HINT);
   }
   const obfuscate = t.usePathObfuscation === undefined ? encrypted : Boolean(t.usePathObfuscation);
   const opts: DirectFileManipulatorOptions = {
@@ -181,6 +184,8 @@ export function buildOptions(cfg: LiveSyncConfig, tweaks: Tweaks | undefined): D
   };
   const target = opts as unknown as Record<string, unknown>;
   for (const k of TWEAK_KEYS) if (t[k] !== undefined) target[k] = t[k];
+  // Mit Schlüssel und ohne andere Vorgabe: ID-Ableitung Version 1 (die Bibliothek nähme sonst 0 und ignorierte den Schlüssel)
+  if (idKey && t.idDerivationVersion === undefined) target.idDerivationVersion = 1;
   return opts;
 }
 
@@ -198,6 +203,9 @@ function isPathIdentityError(e: unknown) {
   return /path identity/i.test(String((e as Error)?.message ?? ''));
 }
 
+const ID_KEY_HINT =
+  'Dieser Vault nutzt einen ID-Schlüssel, der fehlt oder nicht passt. Bitte den Wiederherstellungscode aus LiveSync („Show current recovery code“) angeben.';
+
 const DECRYPT_HINT = 'Die Notizen lassen sich nicht entschlüsseln. E2EE-Passphrase (und ggf. ID-Schlüssel) prüfen.';
 
 /** Web Crypto meldet eine falsche Passphrase als DOMException „OperationError“ ohne Text */
@@ -209,6 +217,7 @@ function isDecryptError(e: unknown) {
 
 function friendlyError(e: unknown): Error {
   if (isDecryptError(e)) return new Error(DECRYPT_HINT);
+  if (/do not match the configured ID key|ID key/i.test(String((e as Error)?.message ?? ''))) return new Error(ID_KEY_HINT);
   const msg = String((e as Error)?.message ?? e);
   const status = (e as { status?: number })?.status;
   if (status === 401 || /unauthorized|name or password/i.test(msg)) return new AuthError('CouchDB: Benutzername oder Passwort falsch.');

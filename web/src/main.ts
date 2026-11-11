@@ -62,6 +62,18 @@ function liveSyncCard(): HTMLElement {
   const uri = h('textarea.source-textarea', { rows: 3, placeholder: 'obsidian://setuplivesync?settings=…', spellcheck: 'false' }) as HTMLTextAreaElement;
   const uriPw = h('input', { type: 'password', placeholder: 'Passwort der Setup-URI', autocomplete: 'off' }) as HTMLInputElement;
   const uriBtn = h('button.mod-cta', { type: 'submit', text: 'Mit Setup-URI verbinden' }) as HTMLButtonElement;
+  // ID-Schlüssel: steckt nicht immer in der Setup-URI (LiveSync lässt ihn weg, wenn er verschlüsselt gespeichert ist).
+  // Das Feld erscheint, sobald der Vault ihn verlangt.
+  const uriIdKey = h('input', { type: 'password', placeholder: 'Wiederherstellungscode sls-id-v1:…', autocomplete: 'off' }) as HTMLInputElement;
+  const uriIdBox = h(
+    'div.source-idkey',
+    { hidden: true },
+    h('div.source-hint', {
+      text: 'Dein Vault nutzt einen ID-Schlüssel, der nicht in der Setup-URI steckt. In Obsidian: Einstellungen → Self-hosted LiveSync → „Show current recovery code“ → Code kopieren und hier einfügen.',
+    }),
+    uriIdKey,
+  );
+  const needsIdKey = (ex: unknown) => /ID-Schlüssel|Wiederherstellungscode/.test((ex as Error)?.message ?? '');
   const uriForm = h(
     'form.source-form',
     {
@@ -71,9 +83,15 @@ function liveSyncCard(): HTMLElement {
         busy(uriBtn, true, 'Mit Setup-URI verbinden');
         try {
           const { configFromSetupURI } = await import('./adapters/livesync');
-          await startLiveSync(await configFromSetupURI(uri.value, uriPw.value));
+          const cfg = await configFromSetupURI(uri.value, uriPw.value);
+          if (uriIdKey.value.trim()) cfg.idDerivationKey = uriIdKey.value.trim();
+          await startLiveSync(cfg);
         } catch (ex) {
           fail(ex);
+          if (needsIdKey(ex)) {
+            uriIdBox.hidden = false;
+            uriIdKey.focus();
+          }
         } finally {
           busy(uriBtn, false, 'Mit Setup-URI verbinden');
         }
@@ -81,6 +99,7 @@ function liveSyncCard(): HTMLElement {
     },
     uri,
     uriPw,
+    uriIdBox,
     uriBtn,
     h('div.source-hint', { text: 'In Obsidian: Befehlspalette → „Self-hosted LiveSync: Copy the setup URI“ (bzw. in den LiveSync-Einstellungen). Das Passwort ist das, das du dabei vergibst.' }),
   );

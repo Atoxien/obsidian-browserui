@@ -56,6 +56,9 @@ describe('Optionen aus Datenbank-Einstellungen', () => {
     const o = buildOptions({ ...base, idDerivationKey: `sls-id-v1:${HEX}` }, { encrypt: true, idDerivationVersion: 1 }) as unknown as Record<string, unknown>;
     expect(o.idDerivationKey).toBe(HEX);
     expect(o.idDerivationVersion).toBe(1);
+    // Schlüssel ohne Vorgabe der Datenbank -> Version 1, sonst würde er ignoriert
+    expect((buildOptions({ ...base, idDerivationKey: HEX }, {}) as unknown as Record<string, unknown>).idDerivationVersion).toBe(1);
+    expect((buildOptions(base, {}) as unknown as Record<string, unknown>).idDerivationVersion).toBeUndefined();
   });
 });
 
@@ -83,6 +86,12 @@ describe('Setup-URI', () => {
     // Die Datenbank hat Vorrang vor der Setup-URI
     const o2 = buildOptions(cfg, { pathNormalizationVersion: 0 }) as unknown as Record<string, unknown>;
     expect(o2.pathNormalizationVersion).toBe(0);
+  });
+  it('Setup-URI ohne ID-Schlüssel legt die ID-Version nicht fest', async () => {
+    const uri = await encodeSettingsToSetupURI(settings as never, 'setup-pw');
+    const cfg = await configFromSetupURI(uri, 'setup-pw');
+    expect(cfg.settings?.idDerivationVersion).toBeUndefined();
+    expect((buildOptions({ ...cfg, idDerivationKey: HEX }, undefined) as unknown as Record<string, unknown>).idDerivationVersion).toBe(1);
   });
   it('meldet ein falsches Setup-Passwort verständlich', async () => {
     const uri = await encodeSettingsToSetupURI(settings as never, 'setup-pw');

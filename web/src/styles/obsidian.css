@@ -1419,3 +1419,15 @@ iframe.pdf-view {
 .source-card.mod-livesync {
   border-color: hsla(var(--accent-h), var(--accent-s), var(--accent-l), 0.5);
 }
+.source-idkey {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--interactive-accent);
+  border-radius: var(--radius-s);
+  background: hsla(var(--accent-h), var(--accent-s), var(--accent-l), 0.08);
+}
+.source-idkey[hidden] {
+  display: none;
+}
