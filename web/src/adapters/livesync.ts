@@ -114,6 +114,8 @@ export interface LiveSyncConfig {
   idDerivationKey?: string;
   /** Einstellungen des Geräts aus der Setup-URI (die Datenbank hat Vorrang) */
   settings?: Record<string, unknown>;
+  /** Vault mit ID-Schlüssel, aber ohne Schlüssel geöffnet: nur lesen (Schreiben bräuchte den Schlüssel) */
+  readOnlyWithoutKey?: boolean;
 }
 
 /** Einstellungen, die in der Datenbank für alle Geräte gleich sein müssen (vom Plugin hinterlegt) */
@@ -203,7 +205,7 @@ export function buildOptions(cfg: LiveSyncConfig, tweaks: Tweaks | undefined): D
     throw new Error('Dieser Vault ist Ende-zu-Ende-verschlüsselt. Bitte die E2EE-Passphrase aus LiveSync angeben.');
   }
   const idKey = normalizeIdKey(cfg.idDerivationKey);
-  if (t.idDerivationVersion === 1 && !idKey) {
+  if (t.idDerivationVersion === 1 && !idKey && !cfg.readOnlyWithoutKey) {
     throw new Error(ID_KEY_HINT);
   }
   const obfuscate = t.usePathObfuscation === undefined ? encrypted : Boolean(t.usePathObfuscation);
@@ -220,6 +222,9 @@ export function buildOptions(cfg: LiveSyncConfig, tweaks: Tweaks | undefined): D
   for (const k of TWEAK_KEYS) if (t[k] !== undefined) target[k] = t[k];
   // Mit Schlüssel und ohne andere Vorgabe: ID-Ableitung Version 1 (die Bibliothek nähme sonst 0 und ignorierte den Schlüssel)
   if (idKey && t.idDerivationVersion === undefined) target.idDerivationVersion = 1;
+  // Nur lesen ohne Schlüssel: Dokumente liegen ohne Verschleierung unter ihrem Pfad, Teile sind direkt
+  // verlinkt – zum Lesen wird der Schlüssel nicht gebraucht. Geschrieben wird in diesem Modus nie.
+  if (cfg.readOnlyWithoutKey && !idKey) target.idDerivationVersion = 0;
   return opts;
 }
 
@@ -281,7 +286,7 @@ function withDiagnostics(err: unknown, raw: unknown, diagnostics: Record<string,
 
 export class LiveSyncAdapter implements VaultAdapter {
   readonly kind = 'livesync';
-  readonly readOnly = false;
+  readonly readOnly: boolean;
   readonly ephemeral = true;
   readonly name: string;
   private folders = new Set<string>();
@@ -292,7 +297,12 @@ export class LiveSyncAdapter implements VaultAdapter {
     private man: DirectFileManipulator,
     readonly config: LiveSyncConfig,
   ) {
-    this.name = config.database;
+    this.name = config.readOnlyWithoutKey ? `${config.database} (nur lesen)` : config.database;
+    this.readOnly = Boolean(config.readOnlyWithoutKey);
+  }
+
+  private assertWritable() {
+    if (this.readOnly) throw new Error('Nur-Lesen-Modus: Zum Bearbeiten wird der ID-Schlüssel des Vaults benötigt.');
   }
 
   /**
@@ -322,6 +332,15 @@ export class LiveSyncAdapter implements VaultAdapter {
       setupUri: pickDiag(cfg.settings),
       database: { ...pickDiag(tweaks as Record<string, unknown>), features, obfuscatedDocs, idKeyGiven: Boolean(cfg.idDerivationKey) },
     };
+    if (cfg.readOnlyWithoutKey && tweaks.usePathObfuscation) {
+      throw withDiagnostics(new Error('Nur-Lesen ohne Schlüssel geht bei Pfad-Verschleierung nicht.'), 'readOnlyWithoutKey + usePathObfuscation', diagnostics);
+    }
+    if (tweaks.idDerivationVersion === 1 && !cfg.idDerivationKey && !cfg.readOnlyWithoutKey) {
+      const err = withDiagnostics(new Error(ID_KEY_HINT), 'idDerivationVersion 1 ohne Schlüssel', diagnostics);
+      // Ohne Pfad-Verschleierung lässt sich der Vault auch ohne Schlüssel lesen
+      (err as { canReadOnly?: boolean }).canReadOnly = !tweaks.usePathObfuscation;
+      throw err;
+    }
     ensureWorkers();
     try {
       return await LiveSyncAdapter.attempt(cfg, tweaks);
@@ -410,6 +429,7 @@ export class LiveSyncAdapter implements VaultAdapter {
   }
 
   async write(path: string, content: string | Blob): Promise<void> {
+    this.assertWritable();
     const now = Date.now();
     const isText = typeof content === 'string';
     const blob = isText
@@ -435,6 +455,7 @@ export class LiveSyncAdapter implements VaultAdapter {
   }
 
   async mkdir(path: string) {
+    this.assertWritable();
     // LiveSync kennt keine leeren Ordner – er entsteht mit der ersten Datei darin.
     this.folders.add(path);
   }
@@ -446,6 +467,7 @@ export class LiveSyncAdapter implements VaultAdapter {
   }
 
   async rename(from: string, to: string) {
+    this.assertWritable();
     const children = await this.filesUnder(from);
     const pairs = children ? children.map((c) => [c, to + c.slice(from.length)] as const) : [[from, to] as const];
     for (const [a, b] of pairs) {
@@ -469,6 +491,7 @@ export class LiveSyncAdapter implements VaultAdapter {
 
   /** Löschen wie in LiveSync (als gelöscht markiert, auf allen Geräten entfernt) */
   async delete(path: string) {
+    this.assertWritable();
     const children = await this.filesUnder(path);
     for (const f of children ?? [path]) await this.remove(f);
     this.folders.delete(path);

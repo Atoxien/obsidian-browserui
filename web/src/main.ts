@@ -28,6 +28,7 @@ interface LiveSyncConfig {
   password: string;
   passphrase: string;
   idDerivationKey?: string;
+  readOnlyWithoutKey?: boolean;
 }
 
 async function startLiveSync(cfg: LiveSyncConfig) {
@@ -54,8 +55,20 @@ function liveSyncCard(): HTMLElement {
     btn.disabled = on;
     btn.textContent = on ? 'Verbinde …' : label;
   };
+  let lastCfg: LiveSyncConfig | null = null;
   const fail = (ex: unknown) => {
     err.replaceChildren((ex as Error).message || String(ex));
+    if ((ex as { canReadOnly?: boolean }).canReadOnly && lastCfg) {
+      const cfg = lastCfg;
+      err.append(
+        h('div.source-hint', { text: 'Ohne Schlüssel kannst du den Vault trotzdem lesen – Bearbeiten bleibt gesperrt, damit nichts Falsches in die Datenbank geschrieben wird.' }),
+        h('button', {
+          type: 'button',
+          text: 'Ohne Schlüssel nur lesen',
+          onclick: () => void startLiveSync({ ...cfg, readOnlyWithoutKey: true }).catch(fail),
+        }),
+      );
+    }
     const details = (ex as { details?: string }).details;
     if (details) {
       err.append(
@@ -96,6 +109,7 @@ function liveSyncCard(): HTMLElement {
           const { configFromSetupURI } = await import('./adapters/livesync');
           const cfg = await configFromSetupURI(uri.value, uriPw.value);
           if (uriIdKey.value.trim()) cfg.idDerivationKey = uriIdKey.value.trim();
+          lastCfg = cfg;
           await startLiveSync(cfg);
         } catch (ex) {
           fail(ex);
@@ -149,6 +163,7 @@ function liveSyncCard(): HTMLElement {
           /* egal */
         }
         busy(manBtn, true, 'Verbinden');
+        lastCfg = cfg;
         try {
           await startLiveSync(cfg);
         } catch (ex) {
