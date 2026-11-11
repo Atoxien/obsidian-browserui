@@ -74,6 +74,16 @@ describe('Setup-URI', () => {
     const cfg = await configFromSetupURI(uri, 'setup-pw');
     expect(cfg).toMatchObject({ url: 'https://couch.example.com', database: 'vault', username: 'admin', password: 'pw', passphrase: 'e2ee' });
   });
+  it('übernimmt Geräte-Einstellungen wie die Pfad-Identität aus der Setup-URI', async () => {
+    const uri = await encodeSettingsToSetupURI({ ...settings, pathNormalizationVersion: 1, E2EEAlgorithm: 'v2' } as never, 'setup-pw');
+    const cfg = await configFromSetupURI(uri, 'setup-pw');
+    expect(cfg.settings).toMatchObject({ pathNormalizationVersion: 1, E2EEAlgorithm: 'v2', encrypt: true });
+    const o = buildOptions(cfg, undefined) as unknown as Record<string, unknown>;
+    expect(o.pathNormalizationVersion).toBe(1);
+    // Die Datenbank hat Vorrang vor der Setup-URI
+    const o2 = buildOptions(cfg, { pathNormalizationVersion: 0 }) as unknown as Record<string, unknown>;
+    expect(o2.pathNormalizationVersion).toBe(0);
+  });
   it('meldet ein falsches Setup-Passwort verständlich', async () => {
     const uri = await encodeSettingsToSetupURI(settings as never, 'setup-pw');
     await expect(configFromSetupURI(uri, 'falsch')).rejects.toThrow('Setup-URI konnte nicht geöffnet werden');

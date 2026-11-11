@@ -78,6 +78,8 @@ export interface LiveSyncConfig {
   passphrase: string;
   /** ID-Schlüssel bzw. Wiederherstellungscode („sls-id-v1:…“), nur bei neueren Vaults nötig */
   idDerivationKey?: string;
+  /** Einstellungen des Geräts aus der Setup-URI (die Datenbank hat Vorrang) */
+  settings?: Record<string, unknown>;
 }
 
 /** Einstellungen, die in der Datenbank für alle Geräte gleich sein müssen (vom Plugin hinterlegt) */
@@ -132,7 +134,10 @@ export async function configFromSetupURI(uri: string, setupPassphrase: string): 
     }
   }
   if (!url || !database) throw new Error('In der Setup-URI fehlt die CouchDB-Verbindung.');
+  const settings: Record<string, unknown> = {};
+  for (const k of [...TWEAK_KEYS, 'encrypt', 'usePathObfuscation']) if (s[k] !== undefined && s[k] !== '') settings[k] = s[k];
   return {
+    settings,
     url,
     database,
     username,
@@ -155,7 +160,7 @@ export function normalizeIdKey(input: string | undefined): string | undefined {
 
 /** Baut die Verbindungsoptionen aus Zugangsdaten + den in der Datenbank hinterlegten Einstellungen */
 export function buildOptions(cfg: LiveSyncConfig, tweaks: Tweaks | undefined): DirectFileManipulatorOptions {
-  const t = tweaks ?? {};
+  const t: Tweaks = { ...(cfg.settings as Tweaks | undefined), ...(tweaks ?? {}) };
   const encrypted = t.encrypt === undefined ? Boolean(cfg.passphrase) : Boolean(t.encrypt);
   if (encrypted && !cfg.passphrase) {
     throw new Error('Dieser Vault ist Ende-zu-Ende-verschlüsselt. Bitte die E2EE-Passphrase aus LiveSync angeben.');
@@ -184,6 +189,13 @@ function pickTweaks(milestone: unknown): Tweaks | undefined {
   const values = (milestone as { tweak_values?: Record<string, Tweaks> }).tweak_values;
   if (!values || typeof values !== 'object') return undefined;
   return values[PREFERRED_TWEAKS] ?? Object.values(values)[0];
+}
+
+const PATH_HINT =
+  'Die Pfad-Einstellungen passen nicht zu dieser Datenbank. Bitte die Setup-URI aus einem Gerät verwenden, das mit diesem Vault synchronisiert.';
+
+function isPathIdentityError(e: unknown) {
+  return /path identity/i.test(String((e as Error)?.message ?? ''));
 }
 
 const DECRYPT_HINT = 'Die Notizen lassen sich nicht entschlüsseln. E2EE-Passphrase (und ggf. ID-Schlüssel) prüfen.';
@@ -230,7 +242,31 @@ export class LiveSyncAdapter implements VaultAdapter {
     if (!/^https?:\/\//i.test(cfg.url)) cfg = { ...cfg, url: `https://${cfg.url.trim()}` };
     await checkDatabase(cfg);
     ensureWorkers();
-    const probe = new DirectFileManipulator(buildOptions(cfg, undefined));
+    try {
+      return await LiveSyncAdapter.attempt(cfg, undefined);
+    } catch (e) {
+      if (!isPathIdentityError(e)) throw e;
+      // Die Datenbank gibt die Pfad-Identität (Unicode-Normalisierung) vor. Die Bibliothek prüft beim
+      // zweiten Versuch erneut, dass die Einstellung zur Datenbank passt – geschrieben wurde bis hier nichts.
+      const tried = (e as { triedPathVersion?: 0 | 1 }).triedPathVersion ?? 0;
+      try {
+        return await LiveSyncAdapter.attempt(cfg, tried === 1 ? 0 : 1);
+      } catch (e2) {
+        if (isPathIdentityError(e2)) throw new Error(PATH_HINT);
+        throw e2;
+      }
+    }
+  }
+
+  private static async attempt(cfg: LiveSyncConfig, pathVersion: 0 | 1 | undefined): Promise<LiveSyncAdapter> {
+    const override: Tweaks = pathVersion === undefined ? {} : { pathNormalizationVersion: pathVersion };
+    const effective = (pathVersion ?? (cfg.settings?.pathNormalizationVersion as 0 | 1 | undefined) ?? 0) as 0 | 1;
+    const tag = (e: unknown) => {
+      const err = friendlyError(e);
+      (err as { triedPathVersion?: 0 | 1 }).triedPathVersion = effective;
+      return err;
+    };
+    const probe = new DirectFileManipulator(buildOptions(cfg, override));
     let milestone: unknown;
     try {
       await probe.ready.promise;
@@ -238,7 +274,7 @@ export class LiveSyncAdapter implements VaultAdapter {
     } catch (e) {
       await shutdown(probe);
       resetWorkers();
-      throw friendlyError(e);
+      throw tag(e);
     }
     await shutdown(probe);
     if (!milestone) {
@@ -247,7 +283,7 @@ export class LiveSyncAdapter implements VaultAdapter {
     if ((milestone as { locked?: boolean }).locked) {
       throw new Error('Die Datenbank ist von LiveSync gesperrt (z.B. nach einem „Rebuild“). Bitte erst in Obsidian entsperren.');
     }
-    const opts = buildOptions(cfg, pickTweaks(milestone));
+    const opts = buildOptions(cfg, { ...pickTweaks(milestone), ...override });
     const man = new DirectFileManipulator(opts);
     const adapter = new LiveSyncAdapter(man, cfg);
     try {
@@ -257,7 +293,7 @@ export class LiveSyncAdapter implements VaultAdapter {
     } catch (e) {
       await shutdown(man);
       resetWorkers();
-      throw friendlyError(e);
+      throw tag(e);
     }
     return adapter;
   }
