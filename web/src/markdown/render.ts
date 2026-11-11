@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 // Obsidian-kompatibles Markdown-Rendering auf Basis von markdown-it.
 import markdownit, { type MarkdownIt, type StateInline, type StateBlock, type StateCore, type Token } from 'markdown-it';
 import katex from 'katex';

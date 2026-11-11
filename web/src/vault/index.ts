@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 // Vault-Index: Dateiliste, Obsidian-kompatible Link-Auflösung, Backlinks, Tags, Volltextsuche.
 import type { VaultFile } from '../adapters/types';
 import { basename, dirname, extname, stripExt } from './paths';

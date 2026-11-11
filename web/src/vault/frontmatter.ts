@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 // Minimaler YAML-Frontmatter-Parser (deckt die in Obsidian-Properties üblichen Formen ab).
 
 export type FMValue = string | number | boolean | null | FMValue[];

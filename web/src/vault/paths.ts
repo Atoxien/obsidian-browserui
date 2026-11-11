@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 export const HIDDEN_DIRS = new Set(['.obsidian', '.trash', '.git', 'node_modules']);
 
 export const basename = (p: string) => p.slice(p.lastIndexOf('/') + 1);

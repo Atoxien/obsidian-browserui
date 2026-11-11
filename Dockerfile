@@ -8,6 +8,9 @@ RUN npm ci
 COPY web web
 # Beispiel-Vault wird als Demo in die Oberfläche eingebettet
 COPY examples examples
+# AGPL §13: Link auf den Quellcode dieser Version (bei eigenen Änderungen auf dein Repo setzen)
+ARG SOURCE_URL=https://github.com/Atoxien/obsidian-browserui
+ENV VITE_SOURCE_URL=$SOURCE_URL
 RUN npm run build -w web
 
 # ---- Laufzeit ----

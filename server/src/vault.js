@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 // Sicherer Dateizugriff auf den Vault-Ordner.
 import fs from 'node:fs/promises';
 import path from 'node:path';

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 // Demo-Vault: läuft komplett im Browser-Tab. Keine Netzwerkzugriffe, keine gemeinsamen Daten –
 // jeder Besucher bekommt seine eigene Kopie, die mit dem Tab verschwindet oder nach Ablauf zurückgesetzt wird.
 import type { VaultAdapter, VaultFile } from './types';

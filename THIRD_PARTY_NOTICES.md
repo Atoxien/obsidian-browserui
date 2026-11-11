@@ -1,6 +1,8 @@
 # Drittanbieter-Software
 
-Dieses Projekt verwendet bzw. enthält folgende Open-Source-Komponenten. Die jeweiligen Lizenztexte liegen den Paketen in `node_modules/` bei; im gebauten Frontend (`web/dist`) sind sie gebündelt enthalten.
+Vault Browser selbst steht unter der AGPL-3.0-or-later (siehe [LICENSE](LICENSE)). Es verwendet bzw. enthält folgende Open-Source-Komponenten. Die jeweiligen Lizenztexte liegen den Paketen in `node_modules/` bei; im gebauten Frontend (`web/dist`) sind sie gebündelt enthalten.
+
+Alle Komponenten stehen unter freizügigen Lizenzen, die mit der AGPL-3.0 vereinbar sind. DOMPurify ist doppelt lizenziert (MPL-2.0 oder Apache-2.0); wir nutzen es unter **Apache-2.0**. [livesync-bridge](https://github.com/vrtmrz/livesync-bridge) ist **nicht** Teil dieses Projekts: Sie wird beim Einrichten der LiveSync-Anbindung separat aus ihrem eigenen Repository gebaut.
 
 | Komponente | Lizenz | Verwendung |
 | --- | --- | --- |
@@ -9,7 +11,7 @@ Dieses Projekt verwendet bzw. enthält folgende Open-Source-Komponenten. Die jew
 | ↳ `entities` | BSD-2-Clause | Abhängigkeit von markdown-it |
 | ↳ `argparse` | PSF-2.0 | Abhängigkeit von markdown-it (nur CLI, nicht im Browser-Bundle) |
 | [KaTeX](https://katex.org/) inkl. Schriften | MIT | Formeln (`$…$`) |
-| [DOMPurify](https://github.com/cure53/DOMPurify) | MPL-2.0 oder Apache-2.0 (wählbar) | HTML-Bereinigung |
+| [DOMPurify](https://github.com/cure53/DOMPurify) | Apache-2.0 (gewählt; alternativ MPL-2.0) | HTML-Bereinigung |
 | [Fastify](https://fastify.dev/) und Plugins (`@fastify/static`, `@fastify/cookie`) | MIT (einzelne Unterpakete BSD-3-Clause, ISC) | Server |
 | [chokidar](https://github.com/paulmillr/chokidar) | MIT | Datei-Überwachung |
 | `glob`, `minimatch`, `minipass`, `lru-cache`, `path-scurry` | BlueOak-1.0.0 | Abhängigkeiten von `@fastify/static` |

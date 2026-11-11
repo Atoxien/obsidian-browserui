@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 // Workspace: Layout, Tabs, Seitenleisten, Speichern & Dateioperationen.
 import { AuthError, ConflictError, type VaultAdapter } from '../adapters/types';
 import { ServerAdapter } from '../adapters/server';
@@ -8,6 +10,7 @@ import { FileTree } from './filetree';
 import { renderInto, scrollToSubpath, type PreviewContext } from './preview';
 import { confirmDialog, contextMenu, debounce, fuzzy, h, icon, modal, notice, prompt } from './dom';
 import { applyTemplate, formatDate, loadObsidianConfig, loadPrefs, savePrefs, type ObsidianConfig, type Prefs } from './settings';
+import { LICENSE_NAME, SOURCE_URL } from '../meta';
 
 type Mode = 'preview' | 'source';
 
@@ -1268,6 +1271,16 @@ export class App {
       })()),
       row('Interne Links aktualisieren', 'Beim Umbenennen/Verschieben Links in anderen Notizen anpassen', toggle(p.updateLinks, (v) => ((p.updateLinks = v), apply()))),
       h('div.setting-item.setting-info', {}, h('div.setting-item-info', {}, h('div.setting-item-name', { text: 'Vault' }), h('div.setting-item-description', { text: `${this.adapter.name} · ${sourceLabel(this.adapter)} · ${this.index.notes().length} Notizen` }))),
+      h(
+        'div.setting-item.setting-info',
+        {},
+        h(
+          'div.setting-item-info',
+          {},
+          h('div.setting-item-name', { text: 'Über Vault Browser' }),
+          h('div.setting-item-description', {}, `Freie Software unter ${LICENSE_NAME}. `, h('a.source-link', { href: SOURCE_URL, target: '_blank', rel: 'noopener noreferrer', text: 'Quellcode ansehen' })),
+        ),
+      ),
     );
     modal('Einstellungen', body, { wide: true });
   }

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 // Benutzer-Einstellungen (pro Browser) und Obsidian-Vault-Konfiguration (.obsidian/*.json).
 import type { VaultAdapter } from '../adapters/types';
 

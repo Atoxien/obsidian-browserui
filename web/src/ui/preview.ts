@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 // Lese-Ansicht: Markdown rendern, säubern und Obsidian-Elemente (Links, Embeds, Aufgaben) verdrahten.
 import DOMPurify from 'dompurify';
 import { renderMarkdown } from '../markdown/render';

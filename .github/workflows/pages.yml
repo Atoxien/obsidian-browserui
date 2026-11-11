@@ -28,6 +28,9 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+        env:
+          # AGPL §13: Die Seite verlinkt den Quellcode genau dieses Repos (auch bei Forks)
+          VITE_SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

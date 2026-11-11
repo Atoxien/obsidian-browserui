@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 export interface VaultFile {
   path: string;
   type: 'file' | 'folder';

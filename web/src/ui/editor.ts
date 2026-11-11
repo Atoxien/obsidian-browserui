@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 // Markdown-Editor auf Basis von CodeMirror 6.
 import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap, drawSelection, highlightActiveLine, dropCursor, placeholder } from '@codemirror/view';

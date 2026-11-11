@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 import { AuthError, ConflictError, type ChangeEvent, type VaultAdapter, type VaultFile } from './types';
 
 export interface ServerInfo {

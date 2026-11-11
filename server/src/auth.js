@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 // Einfache Passwort-Authentifizierung mit signiertem Session-Cookie.
 import crypto from 'node:crypto';
 

@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+   Copyright (C) 2026 Atoxien */
 /* Obsidian-ähnliches Theme (eigene Umsetzung, angelehnt an das Standard-Theme) */
 
 :root {
@@ -1372,4 +1374,9 @@ iframe.pdf-view {
 }
 .source-card.mod-demo {
   border-style: dashed;
+}
+
+.start-footer a,
+.setting-item-description a {
+  color: var(--text-accent);
 }

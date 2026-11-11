@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 // Fastify-App: Vault-API + Auslieferung des Frontends.
 import path from 'node:path';
 import fs from 'node:fs';

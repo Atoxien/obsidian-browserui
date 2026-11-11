@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 import 'katex/dist/katex.min.css';
 import './styles/obsidian.css';
 import type { VaultAdapter } from './adapters/types';
@@ -8,6 +10,7 @@ import { DemoAdapter, demoSeed } from './adapters/demo';
 import { App } from './ui/app';
 import { h, icon, notice } from './ui/dom';
 import { applyPrefs, loadPrefs } from './ui/settings';
+import { LICENSE_NAME, SOURCE_URL } from './meta';
 
 const host = document.getElementById('app')!;
 const LAST = 'obui.last';
@@ -173,7 +176,7 @@ async function showStart() {
         'div.source-hint',
         {},
         'Du nutzt Self-hosted LiveSync? ',
-        h('a', { href: 'https://github.com/Atoxien/obsidian-browserui/blob/main/docs/livesync.md', target: '_blank', rel: 'noopener noreferrer', text: 'So bindest du deinen LiveSync-Vault an' }),
+        h('a', { href: `${SOURCE_URL}/blob/main/docs/livesync.md`, target: '_blank', rel: 'noopener noreferrer', text: 'So bindest du deinen LiveSync-Vault an' }),
         '.',
       ),
       err,
@@ -302,7 +305,15 @@ async function showStart() {
         {},
         h('div', { text: 'Dein Vault bleibt, wo er ist – diese Seite liest und schreibt direkt die Markdown-Dateien, kompatibel mit Obsidian. Es gibt keinen Server dieser Seite, der deine Daten sieht.' }),
         h('div', { text: 'Auf fremden Rechnern: nach Benutzung unten links „Vault wechseln / abmelden“ wählen.' }),
-        h('div', { text: 'Unabhängiges Projekt, nicht verbunden mit Obsidian / Dynalist Inc.' }),
+        h(
+          'div',
+          {},
+          'Freie Software unter ',
+          h('a', { href: `${SOURCE_URL}/blob/main/LICENSE`, target: '_blank', rel: 'noopener noreferrer', text: LICENSE_NAME }),
+          ' · ',
+          h('a.source-link', { href: SOURCE_URL, target: '_blank', rel: 'noopener noreferrer', text: 'Quellcode' }),
+          ' · Unabhängiges Projekt, nicht verbunden mit Obsidian / Dynalist Inc.',
+        ),
       ),
     ),
   );

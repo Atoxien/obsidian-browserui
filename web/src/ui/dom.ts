@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 type Attrs = Record<string, string | number | boolean | EventListener | undefined | null>;
 
 /** Kleiner Hyperscript-Helfer: h('div.klasse', {onclick}, kinder) */

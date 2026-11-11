@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildApp } from './app.js';

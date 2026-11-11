@@ -191,4 +191,15 @@ GitHub Actions: `ci.yml` (Tests + Build), `pages.yml` (Veröffentlichung auf Git
 
 ## Lizenz
 
-Siehe [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) für die verwendeten Bibliotheken. [livesync-bridge](https://github.com/vrtmrz/livesync-bridge) ist nicht enthalten, sondern wird beim Einrichten aus ihrem eigenen Repo gebaut.
+Copyright (C) 2026 Atoxien
+
+Vault Browser ist freie Software unter der **GNU Affero General Public License, Version 3 oder später** (AGPL-3.0-or-later). Den vollständigen Text findest du in [LICENSE](LICENSE).
+
+Kurz gesagt (der Lizenztext ist verbindlich):
+
+- **Du darfst** Vault Browser nutzen, selbst hosten, verändern und weitergeben, auch kommerziell.
+- **Wenn du eine veränderte Version** weitergibst **oder anderen über das Netzwerk anbietest** (z.B. als Webseite oder gehosteten Dienst), musst du deren Quellcode ebenfalls unter AGPL-3.0 zur Verfügung stellen. Der Link „Quellcode“ in der App erfüllt das: Bei eigenen Builds setzt du `VITE_SOURCE_URL` (bzw. das Docker-Build-Argument `SOURCE_URL`) auf dein Repo. Über GitHub Actions passiert das automatisch.
+- Für die unveränderte Nutzung, auch für deinen eigenen Server mit deinem Vault, musst du nichts tun.
+- Beiträge (Pull Requests) werden unter derselben Lizenz aufgenommen.
+
+Verwendete Bibliotheken und ihre Lizenzen: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). [livesync-bridge](https://github.com/vrtmrz/livesync-bridge) ist nicht enthalten, sondern wird beim Einrichten aus ihrem eigenen Repo gebaut.

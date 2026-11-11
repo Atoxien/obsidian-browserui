@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Atoxien
 import type { VaultAdapter, VaultFile } from './types';
 import { HIDDEN_DIRS } from '../vault/paths';
 

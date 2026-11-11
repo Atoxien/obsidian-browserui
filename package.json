@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Obsidian-Vaults im Browser lesen und bearbeiten – aus einem lokalen Ordner, vom eigenen Server oder direkt aus Obsidian. Ohne Installation auf fremden Rechnern nutzbar.",
+  "license": "AGPL-3.0-or-later",
   "type": "module",
   "workspaces": [
     "web",
