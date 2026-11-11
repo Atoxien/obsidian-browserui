@@ -1,0 +1,14 @@
+services:
+  obsidian-browserui:
+    build: .
+    container_name: obsidian-browserui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      VAULT_PASSWORD: "bitte-ändern"        # Pflicht: Login-Passwort
+      SESSION_SECRET: "langer-zufallswert"  # empfohlen: z.B. `openssl rand -hex 32`
+      # SECURE_COOKIE: "1"                  # aktivieren, wenn hinter HTTPS-Reverse-Proxy
+      # Datei-Besitzer im Vault: Container läuft als UID 1000 (user "node")
+    volumes:
+      - /pfad/zu/deinem/vault:/vault
