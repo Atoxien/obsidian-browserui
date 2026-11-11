@@ -69,7 +69,7 @@ function liveSyncCard(): HTMLElement {
     'div.source-idkey',
     { hidden: true },
     h('div.source-hint', {
-      text: 'Dein Vault nutzt einen ID-Schlüssel, der nicht in der Setup-URI steckt. In Obsidian: Einstellungen → Self-hosted LiveSync → „Show current recovery code“ → Code kopieren und hier einfügen.',
+      text: 'Dein Vault nutzt einen ID-Schlüssel, der nicht in der Setup-URI steckt. In Obsidian: Einstellungen → Self-hosted LiveSync → „Remote Configuration“ → „Configure E2EE“ → „Show current recovery code“ → „Copy recovery code“. Den Dialog danach mit „Abbrechen“ schließen.',
     }),
     uriIdKey,
   );

@@ -58,7 +58,9 @@ curl -s -o /dev/null -D - -X OPTIONS https://<deine-couchdb>/<datenbank> -H "Ori
 Auf der Startseite die Karte **„Self-hosted LiveSync“** wählen:
 
 - **Setup-URI (am einfachsten):** In Obsidian die Befehlspalette öffnen → „Self-hosted LiveSync: Copy the setup URI“ (je nach Version auch in den LiveSync-Einstellungen). Dabei vergibst du ein Passwort für die URI. URI und dieses Passwort im Vault Browser einfügen.
-- **Manuell:** CouchDB-Adresse, Datenbankname, Benutzer und Passwort, dazu die E2EE-Passphrase. Neuere Vaults verlangen zusätzlich den **Wiederherstellungscode** (`sls-id-v1:…`, in LiveSync unter „Show current recovery code“); der Vault Browser fragt danach, wenn er nötig ist.
+- **Manuell:** CouchDB-Adresse, Datenbankname, Benutzer und Passwort, dazu die E2EE-Passphrase. Neuere Vaults verlangen zusätzlich den **Wiederherstellungscode** (`sls-id-v1:…`); der Vault Browser fragt danach, wenn er nötig ist – auch bei der Anmeldung per Setup-URI, denn LiveSync lässt den Schlüssel dort weg, wenn er verschlüsselt gespeichert ist.
+
+**Wo der Wiederherstellungscode steht:** In Obsidian **Einstellungen → Self-hosted LiveSync → „Remote Configuration“ → Abschnitt „E2EE Configuration“ → „Configure E2EE“**. Im Dialog **„Show current recovery code“** → **„Copy recovery code“**. Den Dialog danach mit **Abbrechen** schließen und dort nichts ändern (er gehört zur Verschlüsselung deines Vaults).
 
 Zugangsdaten bleiben nur im aktuellen Tab und sind beim Schließen oder über „Vault wechseln / abmelden“ weg. Optional kannst du dir Adresse, Datenbank und Benutzer merken lassen – Passwörter nie.
 

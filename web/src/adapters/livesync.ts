@@ -204,7 +204,7 @@ function isPathIdentityError(e: unknown) {
 }
 
 const ID_KEY_HINT =
-  'Dieser Vault nutzt einen ID-Schlüssel, der fehlt oder nicht passt. Bitte den Wiederherstellungscode aus LiveSync („Show current recovery code“) angeben.';
+  'Dieser Vault nutzt einen ID-Schlüssel, der fehlt oder nicht passt. Bitte den Wiederherstellungscode aus LiveSync angeben (Remote Configuration → Configure E2EE → „Show current recovery code“).';
 
 const DECRYPT_HINT = 'Die Notizen lassen sich nicht entschlüsseln. E2EE-Passphrase (und ggf. ID-Schlüssel) prüfen.';
 
