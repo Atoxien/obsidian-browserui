@@ -64,8 +64,42 @@ async function checkDatabase(cfg: LiveSyncConfig) {
   if (!r.ok) throw new Error(`CouchDB antwortet mit HTTP ${r.status}.`);
 }
 
+function dbUrl(cfg: LiveSyncConfig, path = '') {
+  return `${cfg.url.replace(/\/+$/, '')}/${encodeURIComponent(cfg.database)}${path}`;
+}
+
+function authHeader(cfg: LiveSyncConfig) {
+  return { Authorization: `Basic ${btoa(unescape(encodeURIComponent(`${cfg.username}:${cfg.password}`)))}` };
+}
+
+/** Liest ein Dokument direkt per HTTP (ohne LiveSync-Verbindung); null, wenn es fehlt */
+async function getRaw(cfg: LiveSyncConfig, id: string): Promise<Record<string, unknown> | null> {
+  const r = await fetch(dbUrl(cfg, `/${id.split('/').map(encodeURIComponent).join('/')}`), { headers: authHeader(cfg) });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`CouchDB antwortet mit HTTP ${r.status}.`);
+  return (await r.json()) as Record<string, unknown>;
+}
+
+/** Gibt es verschleierte Dokument-IDs („f:…“)? Dann nutzt der Vault Pfad-Verschleierung. */
+async function hasObfuscatedDocs(cfg: LiveSyncConfig): Promise<boolean> {
+  const q = `?startkey=${encodeURIComponent('"f:"')}&endkey=${encodeURIComponent('"f:\ufff0"')}&limit=1`;
+  const r = await fetch(dbUrl(cfg, `/_all_docs${q}`), { headers: authHeader(cfg) });
+  if (!r.ok) return false;
+  return (((await r.json()) as { rows?: unknown[] }).rows ?? []).length > 0;
+}
+
+/** Nicht geheime Übersicht der Einstellungen – für „Technische Details“ bei Fehlern */
+const DIAG_KEYS = ['encrypt', 'usePathObfuscation', 'idDerivationVersion', 'pathNormalizationVersion', 'E2EEAlgorithm', 'chunkSplitterVersion', 'hashAlg', 'enableCompression', 'handleFilenameCaseSensitive'] as const;
+function pickDiag(o: Record<string, unknown> | undefined) {
+  const out: Record<string, unknown> = {};
+  if (o) for (const k of DIAG_KEYS) if (o[k] !== undefined) out[k] = o[k];
+  return out;
+}
+
 /** Von LiveSync (Obsidian-Plugin) angelegtes Dokument mit den Vault-weiten Einstellungen */
 const MILESTONE_ID = '_local/obsydian_livesync_milestone';
+const VERSION_ID = 'obsydian_livesync_version';
+const NFC_FEATURE = 'nfc-path-identity-v1';
 const PREFERRED_TWEAKS = 'PREFERRED';
 const RECOVERY_PREFIX = 'sls-id-v1:';
 
@@ -206,6 +240,9 @@ function isPathIdentityError(e: unknown) {
 const ID_KEY_HINT =
   'Dieser Vault nutzt einen ID-Schlüssel, der fehlt oder nicht passt. Bitte den Wiederherstellungscode aus LiveSync angeben (Remote Configuration → Configure E2EE → „Show current recovery code“).';
 
+const ID_MISMATCH_HINT =
+  'Die Dokument-IDs in der Datenbank passen nicht zu den Einstellungen (Pfad-Verschleierung bzw. ID-Schlüssel). Bitte „Technische Details“ ansehen.';
+
 const DECRYPT_HINT = 'Die Notizen lassen sich nicht entschlüsseln. E2EE-Passphrase (und ggf. ID-Schlüssel) prüfen.';
 
 /** Web Crypto meldet eine falsche Passphrase als DOMException „OperationError“ ohne Text */
@@ -217,7 +254,7 @@ function isDecryptError(e: unknown) {
 
 function friendlyError(e: unknown): Error {
   if (isDecryptError(e)) return new Error(DECRYPT_HINT);
-  if (/do not match the configured ID key|ID key/i.test(String((e as Error)?.message ?? ''))) return new Error(ID_KEY_HINT);
+  if (/do not match the configured ID key/i.test(String((e as Error)?.message ?? ''))) return new Error(ID_MISMATCH_HINT);
   const msg = String((e as Error)?.message ?? e);
   const status = (e as { status?: number })?.status;
   if (status === 401 || /unauthorized|name or password/i.test(msg)) return new AuthError('CouchDB: Benutzername oder Passwort falsch.');
@@ -228,6 +265,18 @@ function friendlyError(e: unknown): Error {
     );
   }
   return e instanceof Error ? e : new Error(msg);
+}
+
+/** Hängt nicht geheime technische Details an eine Fehlermeldung (für die Anzeige „Technische Details“) */
+function withDiagnostics(err: unknown, raw: unknown, diagnostics: Record<string, unknown>): Error {
+  const e = err instanceof Error ? err : new Error(String(err));
+  const rawMsg = (raw as { name?: string; message?: string }) ?? {};
+  (e as { details?: string }).details = JSON.stringify(
+    { meldung: `${rawMsg.name ?? 'Error'}: ${rawMsg.message ?? String(raw)}`, ...diagnostics },
+    null,
+    1,
+  );
+  return e;
 }
 
 export class LiveSyncAdapter implements VaultAdapter {
@@ -246,46 +295,15 @@ export class LiveSyncAdapter implements VaultAdapter {
     this.name = config.database;
   }
 
-  /** Verbindet sich, übernimmt die Vault-Einstellungen aus der Datenbank und prüft Passphrase/Schlüssel. */
+  /**
+   * Verbindet sich mit den Einstellungen, die in der Datenbank stehen (vom LiveSync-Plugin hinterlegt).
+   * Diese werden per einfacher HTTP-Anfrage gelesen – ohne vorherige LiveSync-Verbindung, damit abweichende
+   * Geräte-Einstellungen (z.B. aus der Setup-URI) den Verbindungsaufbau nicht verhindern.
+   */
   static async connect(cfg: LiveSyncConfig): Promise<LiveSyncAdapter> {
     if (!/^https?:\/\//i.test(cfg.url)) cfg = { ...cfg, url: `https://${cfg.url.trim()}` };
     await checkDatabase(cfg);
-    ensureWorkers();
-    try {
-      return await LiveSyncAdapter.attempt(cfg, undefined);
-    } catch (e) {
-      if (!isPathIdentityError(e)) throw e;
-      // Die Datenbank gibt die Pfad-Identität (Unicode-Normalisierung) vor. Die Bibliothek prüft beim
-      // zweiten Versuch erneut, dass die Einstellung zur Datenbank passt – geschrieben wurde bis hier nichts.
-      const tried = (e as { triedPathVersion?: 0 | 1 }).triedPathVersion ?? 0;
-      try {
-        return await LiveSyncAdapter.attempt(cfg, tried === 1 ? 0 : 1);
-      } catch (e2) {
-        if (isPathIdentityError(e2)) throw new Error(PATH_HINT);
-        throw e2;
-      }
-    }
-  }
-
-  private static async attempt(cfg: LiveSyncConfig, pathVersion: 0 | 1 | undefined): Promise<LiveSyncAdapter> {
-    const override: Tweaks = pathVersion === undefined ? {} : { pathNormalizationVersion: pathVersion };
-    const effective = (pathVersion ?? (cfg.settings?.pathNormalizationVersion as 0 | 1 | undefined) ?? 0) as 0 | 1;
-    const tag = (e: unknown) => {
-      const err = friendlyError(e);
-      (err as { triedPathVersion?: 0 | 1 }).triedPathVersion = effective;
-      return err;
-    };
-    const probe = new DirectFileManipulator(buildOptions(cfg, override));
-    let milestone: unknown;
-    try {
-      await probe.ready.promise;
-      milestone = await probe.rawGet(MILESTONE_ID as never);
-    } catch (e) {
-      await shutdown(probe);
-      resetWorkers();
-      throw tag(e);
-    }
-    await shutdown(probe);
+    const milestone = await getRaw(cfg, MILESTONE_ID);
     if (!milestone) {
       throw new Error('Diese Datenbank wurde noch nicht von Self-hosted LiveSync eingerichtet. Bitte zuerst in Obsidian mit LiveSync verbinden.');
     }
@@ -293,7 +311,37 @@ export class LiveSyncAdapter implements VaultAdapter {
     // führt eine Liste freigegebener Geräte. Gesperrt ist sie nur für Geräte mit einer veralteten LOKALEN
     // Kopie, die alte Stände zurückspielen könnten. Der Vault Browser hat keine lokale Kopie – er liest und
     // schreibt immer direkt den aktuellen Stand – und ist davon daher nicht betroffen.
-    const opts = buildOptions(cfg, { ...pickTweaks(milestone), ...override });
+    const version = await getRaw(cfg, VERSION_ID).catch(() => null);
+    const tweaks: Tweaks = { ...pickTweaks(milestone) };
+    const features = Array.isArray(version?.used_features) ? (version!.used_features as string[]) : [];
+    if (version) tweaks.pathNormalizationVersion = features.includes(NFC_FEATURE) ? 1 : 0;
+    const obfuscatedDocs = await hasObfuscatedDocs(cfg).catch(() => false);
+    if (tweaks.usePathObfuscation === undefined) tweaks.usePathObfuscation = obfuscatedDocs;
+
+    const diagnostics = {
+      setupUri: pickDiag(cfg.settings),
+      database: { ...pickDiag(tweaks as Record<string, unknown>), features, obfuscatedDocs, idKeyGiven: Boolean(cfg.idDerivationKey) },
+    };
+    ensureWorkers();
+    try {
+      return await LiveSyncAdapter.attempt(cfg, tweaks);
+    } catch (e) {
+      if (isPathIdentityError(e)) {
+        // Fallback, falls die Datenbank die Pfad-Identität anders vorgibt als erkannt. Die Bibliothek prüft
+        // erneut gegen die Datenbank – geschrieben wurde bis hier nichts.
+        const tried = (tweaks.pathNormalizationVersion as 0 | 1 | undefined) ?? 0;
+        try {
+          return await LiveSyncAdapter.attempt(cfg, { ...tweaks, pathNormalizationVersion: tried === 1 ? 0 : 1 });
+        } catch (e2) {
+          throw withDiagnostics(isPathIdentityError(e2) ? new Error(PATH_HINT) : e2, e2, diagnostics);
+        }
+      }
+      throw withDiagnostics(e, (e as { raw?: unknown }).raw ?? e, diagnostics);
+    }
+  }
+
+  private static async attempt(cfg: LiveSyncConfig, tweaks: Tweaks): Promise<LiveSyncAdapter> {
+    const opts = buildOptions(cfg, tweaks);
     const man = new DirectFileManipulator(opts);
     const adapter = new LiveSyncAdapter(man, cfg);
     try {
@@ -303,7 +351,9 @@ export class LiveSyncAdapter implements VaultAdapter {
     } catch (e) {
       await shutdown(man);
       resetWorkers();
-      throw tag(e);
+      const err = friendlyError(e);
+      (err as { raw?: unknown }).raw = e;
+      throw err;
     }
     return adapter;
   }

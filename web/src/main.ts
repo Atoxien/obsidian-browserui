@@ -55,7 +55,18 @@ function liveSyncCard(): HTMLElement {
     btn.textContent = on ? 'Verbinde …' : label;
   };
   const fail = (ex: unknown) => {
-    err.textContent = (ex as Error).message || String(ex);
+    err.replaceChildren((ex as Error).message || String(ex));
+    const details = (ex as { details?: string }).details;
+    if (details) {
+      err.append(
+        h(
+          'details.source-details',
+          {},
+          h('summary', { text: 'Technische Details (ohne Passwörter – zum Weitergeben bei Problemen)' }),
+          h('pre', { text: details }),
+        ),
+      );
+    }
   };
 
   // a) Setup-URI (empfohlen) – enthält alle Einstellungen
@@ -73,7 +84,7 @@ function liveSyncCard(): HTMLElement {
     }),
     uriIdKey,
   );
-  const needsIdKey = (ex: unknown) => /ID-Schlüssel|Wiederherstellungscode/.test((ex as Error)?.message ?? '');
+  const needsIdKey = (ex: unknown) => /Wiederherstellungscode/.test((ex as Error)?.message ?? '');
   const uriForm = h(
     'form.source-form',
     {
