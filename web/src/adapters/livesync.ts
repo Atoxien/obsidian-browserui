@@ -280,9 +280,10 @@ export class LiveSyncAdapter implements VaultAdapter {
     if (!milestone) {
       throw new Error('Diese Datenbank wurde noch nicht von Self-hosted LiveSync eingerichtet. Bitte zuerst in Obsidian mit LiveSync verbinden.');
     }
-    if ((milestone as { locked?: boolean }).locked) {
-      throw new Error('Die Datenbank ist von LiveSync gesperrt (z.B. nach einem „Rebuild“). Bitte erst in Obsidian entsperren.');
-    }
+    // Hinweis zu "locked": LiveSync markiert die Datenbank nach einem Rebuild dauerhaft als gesperrt und
+    // führt eine Liste freigegebener Geräte. Gesperrt ist sie nur für Geräte mit einer veralteten LOKALEN
+    // Kopie, die alte Stände zurückspielen könnten. Der Vault Browser hat keine lokale Kopie – er liest und
+    // schreibt immer direkt den aktuellen Stand – und ist davon daher nicht betroffen.
     const opts = buildOptions(cfg, { ...pickTweaks(milestone), ...override });
     const man = new DirectFileManipulator(opts);
     const adapter = new LiveSyncAdapter(man, cfg);
