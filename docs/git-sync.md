@@ -53,6 +53,8 @@ Damit Änderungen aus dem Browser auch auf den Geräten ankommen, müssen die Ge
 
 Am Handy funktioniert das Plugin auch, ist dort aber langsamer.
 
+Alternative ohne Git auf dem Gerät: **GitLab Gitless Sync** (Alexander Terekhin). Es gleicht den ganzen Vault über die GitLab-API ab und läuft auch gut am Handy. Wichtig ist nur, dass es denselben Branch nutzt wie `GIT_BRANCH`. Verwende pro Gerät nur **ein** dieser Plugins.
+
 **Wichtig:** Lass nicht zwei Sync-Systeme gleichzeitig dieselben Dateien abgleichen, z.B. LiveSync **und** Git auf demselben Vault. Wenn Git dein Hauptweg wird, schalte LiveSync auf den Geräten ab, sobald alles in GitLab vollständig ist. Vorher ein Backup machen.
 
 ## Konflikte
