@@ -15,7 +15,7 @@ Vault Browser öffnet deinen [Obsidian](https://obsidian.md)-Vault direkt im Bro
 | Weg | Wofür | Voraussetzung |
 | --- | --- | --- |
 | **Self-hosted LiveSync** | Dein Vault wird per [Self-hosted LiveSync](https://github.com/vrtmrz/obsidian-livesync) (CouchDB) synchronisiert? Dann verbindet sich die Seite **direkt** mit deiner CouchDB – wie die Obsidian-App am Handy, inkl. Ende-zu-Ende-Verschlüsselung. Anmelden per Setup-URI oder Zugangsdaten. | Einmal CORS in CouchDB freigeben – [Anleitung](docs/livesync.md) |
-| **Eigener Vault-Browser-Server** | Vault liegt als Ordner auf deinem Server (oder LiveSync über die [Bridge](docs/livesync.md#weg-b-über-livesync-bridge-server)) | Self-hosted Server (siehe unten), per HTTPS erreichbar |
+| **Eigener Vault-Browser-Server** | Vault liegt als Ordner auf deinem Server (oder LiveSync über die [Bridge](docs/livesync.md#weg-b-über-livesync-bridge-server)) | Self-hosted Server (siehe unten), per HTTPS erreichbar. Vault in Git (z.B. GitLab)? [Mit Git-Sync](docs/git-sync.md) |
 | **Lokaler Ordner** | Vault direkt vom PC öffnen – auch aus **OneDrive, Dropbox, Google Drive, iCloud**, wenn deren Sync-Ordner eingebunden ist. Es wird nichts hochgeladen. | Chrome, Edge oder Brave (Firefox/Safari: nur lesen) |
 | **Obsidian Local REST API** | Mit dem laufenden Obsidian auf diesem PC verbinden | Community-Plugin [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) |
 | **Demo** | Ausprobieren ohne eigenen Vault | nichts |
@@ -99,6 +99,8 @@ docker compose up -d
 ```
 
 Dann `http://<server>:8080` öffnen (oder über die GitHub-Pages-Seite verbinden). Der Container läuft als Benutzer `node` (UID 1000) – der Vault-Ordner muss für diese UID beschreibbar sein.
+
+**Vault liegt in Git (GitHub, GitLab, Gitea …)?** Unter [`deploy/git`](deploy/git) liegt eine Compose-Datei, die den Vault Browser mit einem Git-Abgleich kombiniert: Änderungen aus dem Browser werden automatisch committet und gepusht, Änderungen von anderen Geräten geholt. [Anleitung](docs/git-sync.md)
 
 ### Ohne Docker
 

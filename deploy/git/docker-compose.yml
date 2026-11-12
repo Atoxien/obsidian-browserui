@@ -1,0 +1,33 @@
+# Vault Browser + Git-Synchronisierung (z.B. mit einem privaten GitLab-Repository).
+# Zugangsdaten stehen in der Datei .env (Vorlage: .env.example), nicht hier.
+services:
+  vault-browser:
+    image: ghcr.io/atoxien/obsidian-browserui:latest
+    container_name: vault-browser
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"     # nur lokal, davor der Reverse-Proxy von 1Panel
+    environment:
+      VAULT_PASSWORD: ${VAULT_PASSWORD:?VAULT_PASSWORD in .env setzen}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET in .env setzen}
+      SECURE_COOKIE: "1"
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://atoxien.github.io}
+    volumes:
+      - ./vault:/vault
+    depends_on:
+      - git-sync
+
+  git-sync:
+    image: alpine/git:latest
+    container_name: vault-git-sync
+    restart: unless-stopped
+    user: "1000:1000"             # gleiche Benutzer-ID wie der Vault Browser
+    entrypoint: ["/bin/sh", "/sync.sh"]
+    environment:
+      GIT_REMOTE: ${GIT_REMOTE:?GIT_REMOTE in .env setzen}
+      GIT_BRANCH: ${GIT_BRANCH:-main}
+      SYNC_INTERVAL: ${SYNC_INTERVAL:-120}
+      HOME: /tmp
+    volumes:
+      - ./vault:/vault
+      - ./sync.sh:/sync.sh:ro
